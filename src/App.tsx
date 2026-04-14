@@ -1,3 +1,15 @@
+import { useGameStore } from './store/useGameStore';
+import MenuScreen from './components/screens/MenuScreen';
+import GameScreen from './components/screens/GameScreen';
+import GameOverScreen from './components/screens/GameOverScreen';
+
 export default function App() {
-  return <div className="min-h-screen bg-slate-900 text-white">分轮倍增赛</div>
+  const screen = useGameStore((s) => s.screen);
+  return (
+    <div className="min-h-screen bg-slate-900 text-white">
+      {screen === 'menu' && <MenuScreen />}
+      {screen === 'game' && <GameScreen />}
+      {screen === 'gameover' && <GameOverScreen />}
+    </div>
+  );
 }
