@@ -10,7 +10,30 @@
 - **无后端**：纯前端静态站点
 - **部署**：Vercel
 - **优先级**：丝滑动画 > 移动端适配 > 精美 UI > AI 智能
-- **设计 Skills**：Impeccable（polish/critique/animate/adapt/audit）、Framer Motion Animator、Tailwind CSS、Frontend Design Pro、Game Development
+
+## 功能对等基线
+
+本项目必须完整保留 `poker.html` 原型和 `游戏规则.md` 中的所有核心规则：
+
+- 2 副牌 108 张（含 4 张王牌万能牌）
+- 2-8 人局，开局选定输家名次（第 1 名和最后 1 名永远不输）
+- 4 张公共底牌（3 明 1 暗）+ 每人 5 张手牌
+- 5 轮流程：每轮选 2 张手牌 + 底牌组成三张牌型，倍率 ×1/×2/×4/×8/×16
+- 第 4 轮翻暗牌，第 5 轮剩余 3 张直接比牌
+- 前 3 轮每轮补 2 张牌
+- 牌型大小：同花顺 > 三条 > 同花 > 顺子 > 一对 > 高牌
+- 赔率规则：权重 = 总人数 - 排名 + 1，零和博弈
+- 7 种 AI 对手风格
+
+## 三日交付切片
+
+| 日期 | P0（必须完成） | P1（尽量完成） |
+|------|---------------|---------------|
+| **Day 1** | Vite+React 脚手架、游戏逻辑迁移（Card/Deck/evaluate/payout/ai）、Zustand store、三个 Screen 可切换、基础 UI 可玩闭环 | 春日足球场牌桌主题初版 |
+| **Day 2** | 环形座位布局、核心卡牌动画（发牌/翻牌/选牌/出牌）、输赢特效（粒子+光效+震动）、移动端响应式 | 回合过渡动画、微交互打磨 |
+| **Day 3** | AI 策略升级（至少 3 种 AI 增强）、Vercel 部署上线、整体 polish | 音效（Howler.js）、全量 AI 蒙特卡洛、性能优化 |
+
+**裁剪规则**：如果时间不够，按 P1 → P0 反向裁剪。音效是第一个可以砍掉的。
 
 ---
 
@@ -84,7 +107,10 @@ joson-poker/
 └── tsconfig.json
 ```
 
-**关键设计决策**：`src/game/` 是纯 TypeScript 逻辑层，零 React 依赖。现有原型的核心逻辑（Card、Deck、evalHand、AI 策略）几乎原样迁入，只加类型标注。UI 层通过 Zustand store 读写游戏状态。
+**关键设计决策**：
+
+- `src/game/` 是纯 TypeScript 逻辑层，零 React 依赖。现有原型的核心逻辑（Card、Deck、evalHand、AI 策略）几乎原样迁入，只加类型标注。
+- **状态单一真相**：`GameEngine` 是纯函数/类，接收动作返回新状态快照。`useGameStore`（Zustand）持有当前游戏状态快照，并暴露 action 方法调用 `GameEngine`。React 组件只从 store 读状态，永远不直接调用 `GameEngine`。Phase 推进由 store 中的 action 驱动。
 
 ---
 
@@ -143,30 +169,51 @@ const springTheme = {
 
 ---
 
-## 环形座位布局
+## 椭圆环形座位布局
+
+采用德州扑克风格的环形布局：所有玩家（人类+AI）沿椭圆牌桌边缘均匀围坐。人类玩家固定在底部（6点钟方向）以便操作手牌区域，AI 从人类玩家左侧开始，沿上方弧线顺时针排列到右侧。
+
+**与德州扑克的差异说明**：本游戏无庄家位轮换概念，人类玩家始终在底部是移动端 UX 的最佳选择（手牌操作区在屏幕底部触手可及）。
 
 ### 算法
 
-玩家固定在椭圆底部（6点钟方向），AI 对手沿椭圆上半弧均匀分布。
-
 ```typescript
 function getSeatPositions(totalPlayers: number) {
-  const seats = []
-  seats.push({ x: 50, y: 92, angle: 0 }) // 玩家固定底部
+  const seats: Array<{ x: number; y: number; angle: number }> = []
+
+  // 玩家固定在底部中央（6点钟 = 270°）
+  seats.push({ x: 50, y: 92, angle: 270 })
 
   const aiCount = totalPlayers - 1
-  for (let i = 0; i < aiCount; i++) {
-    const startAngle = 210 // 左下
-    const endAngle = 330   // 右下
-    const angle = startAngle + (endAngle - startAngle) * i / (aiCount - 1 || 1)
-    const rad = (angle * Math.PI) / 180
-    const x = 50 + 42 * Math.cos(rad)
-    const y = 48 + 35 * Math.sin(rad)
-    seats.push({ x, y, angle })
+  if (aiCount === 0) return seats
+
+  if (aiCount === 1) {
+    // 2人局：对手在正上方（12点钟）
+    seats.push({ x: 50, y: 8, angle: 90 })
+  } else {
+    // 3+人局：AI 从左下(200°)沿上方弧线到右下(340°)均匀分布
+    const startAngle = 200
+    const endAngle = 340
+    for (let i = 0; i < aiCount; i++) {
+      const angle = startAngle + (endAngle - startAngle) * i / (aiCount - 1)
+      const rad = (angle * Math.PI) / 180
+      const x = 50 + 42 * Math.cos(rad)  // 椭圆水平半径 42%
+      const y = 48 + 35 * Math.sin(rad)  // 椭圆垂直半径 35%
+      seats.push({ x, y, angle })
+    }
   }
   return seats
 }
 ```
+
+### 各人数座位预期分布
+
+| 人数 | 布局 |
+|------|------|
+| 2人 | 玩家底部中央，对手正上方 |
+| 3人 | 玩家底部，2 AI 分列左上、右上 |
+| 4人 | 玩家底部，3 AI 左上、正上、右上 |
+| 5-8人 | 玩家底部，AI 沿上方弧线均匀铺开 |
 
 ### 座位组件
 
@@ -228,7 +275,13 @@ function getSeatPositions(totalPlayers: number) {
 
 ### 核心新增：estimateWinRate()
 
-用快速蒙特卡洛模拟（50次采样）评估每种出牌方案的预期排名。
+用快速蒙特卡洛模拟评估出牌方案的预期排名。
+
+- **调用时机**：仅在 `select` phase，仅算命（计算）和狐狸（保守-自救模式）两种 AI 使用
+- **输入**：当前 AI 手牌、当前轮公共底牌、已知的所有公共牌、总人数
+- **流程**：从剩余未知牌中随机采样模拟对手手牌（50次），对每种己方出牌组合计算预期排名
+- **性能**：50 次采样 × 最多 C(5,2)=10 种出牌方案 = 500 次 evalHand，单线程 <5ms
+- **降级**：如果某设备卡顿，降为 20 次采样
 
 ### 各 AI 升级方向
 
@@ -266,22 +319,22 @@ function getSeatPositions(totalPlayers: number) {
 
 ---
 
-## 音效设计
+## 音效设计（P1 — 时间允许时实现）
 
-使用 Howler.js，所有音效为短促 Web Audio：
+使用 Howler.js，音效文件放在 `public/sounds/` 目录，格式为 mp3。
 
-| 场景 | 音效 |
-|------|------|
-| 发牌 | 清脆的 "刷" 声 |
-| 翻牌 | 纸牌翻转 "啪" 声 |
-| 选牌 | 轻柔的 "叮" 声 |
-| 出牌确认 | 干脆的 "嗒" 声 |
-| 赢牌 | 欢快的金币/铃铛音效 |
-| 输牌 | 低沉的 "嗡" 声 |
-| 回合切换 | 鼓点/号角声 |
-| 按钮点击 | 轻微的 "咔" 声 |
+| 场景 | 音效 | 文件名 |
+|------|------|--------|
+| 发牌 | 清脆的 "刷" 声 | deal.mp3 |
+| 翻牌 | 纸牌翻转 "啪" 声 | flip.mp3 |
+| 选牌 | 轻柔的 "叮" 声 | select.mp3 |
+| 出牌确认 | 干脆的 "嗒" 声 | confirm.mp3 |
+| 赢牌 | 欢快的金币音效 | win.mp3 |
+| 输牌 | 低沉的 "嗡" 声 | lose.mp3 |
+| 回合切换 | 鼓点声 | round.mp3 |
+| 按钮点击 | 轻微的 "咔" 声 | click.mp3 |
 
-音效可通过设置页面开关控制。
+**降级策略**：`useSound` hook 内部 try/catch 包裹，音效文件缺失或加载失败时静默降级，不影响游戏功能。音效默认开启，通过 localStorage 持久化开关状态。
 
 ---
 
@@ -304,6 +357,19 @@ GameOverScreen
 ```
 
 ---
+
+## 性能与可访问性
+
+### 移动端性能降级
+
+- 检测 `navigator.hardwareConcurrency <= 4` 或帧率低于 30fps 时进入低配模式
+- 低配模式：关闭樱花粒子、减少纸屑数量（40→15）、关闭 backdrop-filter blur
+- `prefers-reduced-motion` 媒体查询：跳过所有装饰性动画（粒子、樱花、呼吸光效），保留功能性动画（翻牌、出牌）
+
+### 触控
+
+- 所有可点击元素最小触控尺寸 44x44px
+- 卡牌选中区域包含 8px padding
 
 ## 部署
 
