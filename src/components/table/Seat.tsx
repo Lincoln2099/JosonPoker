@@ -1,7 +1,15 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { PlayerState } from '../../game/GameEngine';
 import type { RoundResult } from '../../game/payout';
 import type { GamePhase } from '../../game/GameEngine';
+import { AI_REACT_HAPPY, AI_REACT_ANGRY, AI_REACT_NEUTRAL } from '../../game/Card';
+
+function pickReaction(delta: number): string {
+  if (delta > 0) return AI_REACT_HAPPY[Math.floor(Math.random() * AI_REACT_HAPPY.length)]!;
+  if (delta < 0) return AI_REACT_ANGRY[Math.floor(Math.random() * AI_REACT_ANGRY.length)]!;
+  return AI_REACT_NEUTRAL[Math.floor(Math.random() * AI_REACT_NEUTRAL.length)]!;
+}
 
 interface SeatProps {
   player: PlayerState;
@@ -21,6 +29,12 @@ export default function Seat({ player, result, phase, compact }: SeatProps) {
         ? 'text-[var(--lose)]'
         : 'text-white/60';
 
+  const reaction = useMemo(() => {
+    if (!showResult || player.isHuman) return null;
+    return pickReaction(result.delta);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResult, player.isHuman, result?.delta]);
+
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
@@ -29,16 +43,30 @@ export default function Seat({ player, result, phase, compact }: SeatProps) {
       className="flex flex-col items-center gap-0.5"
     >
       {/* Avatar */}
-      <div
-        className="flex items-center justify-center rounded-full text-lg shadow-lg"
-        style={{
-          width: compact ? 32 : 40,
-          height: compact ? 32 : 40,
-          background: 'linear-gradient(135deg, var(--field-dark), var(--field))',
-          border: '2px solid rgba(255,255,255,0.25)',
-        }}
-      >
-        {player.emoji}
+      <div className="relative">
+        <div
+          className="flex items-center justify-center rounded-full text-lg shadow-lg"
+          style={{
+            width: compact ? 32 : 40,
+            height: compact ? 32 : 40,
+            background: 'linear-gradient(135deg, var(--field-dark), var(--field))',
+            border: '2px solid rgba(255,255,255,0.25)',
+          }}
+        >
+          {player.emoji}
+        </div>
+
+        {reaction && (
+          <motion.span
+            className="absolute -right-2 -top-2 text-base drop-shadow"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 12, delay: 0.3 }}
+            style={{ animation: 'emoji-pop 0.4s ease-out 0.3s both' }}
+          >
+            {reaction}
+          </motion.span>
+        )}
       </div>
 
       {/* Name */}

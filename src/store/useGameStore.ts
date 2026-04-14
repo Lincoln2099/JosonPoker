@@ -54,20 +54,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ game: { ...game, phase: 'thinking' } });
 
-    const g = get().game!;
-    const { state: nextState } = executeRound(g);
+    setTimeout(() => {
+      const g = get().game!;
+      const { state: nextState } = executeRound(g);
 
-    set({
-      game: {
-        ...nextState,
-        phase: 'result',
-      },
-    });
+      set({
+        game: {
+          ...nextState,
+          phase: 'result',
+        },
+      });
+    }, 600);
   },
 
   nextRound: () => {
     const game = get().game;
     if (!game) return;
+
+    const isRound3 = game.round === 2;
+
+    if (isRound3) {
+      set({ game: { ...game, phase: 'flip-reveal' } });
+      return;
+    }
 
     const dealt = dealNewCards(game);
     const round = dealt.round + 1;
@@ -81,10 +90,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       game: {
         ...dealt,
         round,
-        phase: 'round-splash',
+        phase: 'dealing',
         selectedIndices: [],
       },
     });
+
+    setTimeout(() => {
+      set((s) => {
+        if (!s.game) return s;
+        return { game: { ...s.game, phase: 'round-splash' } };
+      });
+    }, 800);
   },
 
   goToGameOver: () => {

@@ -1,6 +1,46 @@
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { GameState } from '../../game/GameEngine';
 import { useGameStore } from '../../store/useGameStore';
+
+function AnimatedScore({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value);
+  const prev = useRef(value);
+
+  useEffect(() => {
+    if (prev.current === value) return;
+    const start = prev.current;
+    const diff = value - start;
+    const steps = 20;
+    let step = 0;
+
+    const id = setInterval(() => {
+      step++;
+      setDisplay(Math.round(start + (diff * step) / steps));
+      if (step >= steps) {
+        clearInterval(id);
+        setDisplay(value);
+      }
+    }, 25);
+
+    prev.current = value;
+    return () => clearInterval(id);
+  }, [value]);
+
+  const scoreColor =
+    display > 0 ? 'text-[var(--win)]' : display < 0 ? 'text-[var(--lose)]' : 'text-white/60';
+
+  return (
+    <motion.span
+      className={`text-xs font-semibold leading-tight ${scoreColor}`}
+      key={value}
+      animate={{ scale: [1, 1.15, 1] }}
+      transition={{ duration: 0.3 }}
+    >
+      {display > 0 ? '+' : ''}{display}
+    </motion.span>
+  );
+}
 
 interface ActionBarProps {
   game: GameState;
@@ -15,9 +55,6 @@ export default function ActionBar({ game }: ActionBarProps) {
   const isLastRound = round === 4;
   const human = game.players[0]!;
   const canConfirm = phase === 'select' && selectedIndices.length === 2;
-
-  const scoreColor =
-    human.score > 0 ? 'text-[var(--win)]' : human.score < 0 ? 'text-[var(--lose)]' : 'text-white/60';
 
   return (
     <div className="flex items-center justify-between px-4 py-2">
@@ -34,9 +71,7 @@ export default function ActionBar({ game }: ActionBarProps) {
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-bold leading-tight">{human.name}</span>
-          <span className={`text-xs font-semibold leading-tight ${scoreColor}`}>
-            {human.score > 0 ? '+' : ''}{human.score}
-          </span>
+          <AnimatedScore value={human.score} />
         </div>
       </div>
 
@@ -46,8 +81,8 @@ export default function ActionBar({ game }: ActionBarProps) {
           <motion.button
             onClick={confirmPlay}
             disabled={!canConfirm}
-            whileHover={canConfirm ? { scale: 1.04 } : {}}
-            whileTap={canConfirm ? { scale: 0.96 } : {}}
+            whileHover={canConfirm ? { scale: 1.03 } : {}}
+            whileTap={canConfirm ? { scale: 0.97 } : {}}
             className="rounded-xl px-6 py-2.5 text-base font-bold transition-all"
             style={{
               background: canConfirm
@@ -65,8 +100,8 @@ export default function ActionBar({ game }: ActionBarProps) {
         {phase === 'select' && isLastRound && (
           <motion.button
             onClick={confirmPlay}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             className="rounded-xl px-6 py-2.5 text-base font-bold"
             style={{
               background: 'linear-gradient(135deg, var(--sunlight), #ff8c00)',
@@ -81,8 +116,8 @@ export default function ActionBar({ game }: ActionBarProps) {
         {phase === 'result' && !isLastRound && (
           <motion.button
             onClick={nextRound}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             className="rounded-xl px-6 py-2.5 text-base font-bold"
             style={{
               background: 'linear-gradient(135deg, var(--field), var(--field-light))',
@@ -97,8 +132,8 @@ export default function ActionBar({ game }: ActionBarProps) {
         {phase === 'result' && isLastRound && (
           <motion.button
             onClick={goToGameOver}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             className="rounded-xl px-6 py-2.5 text-base font-bold"
             style={{
               background: 'linear-gradient(135deg, var(--sunlight), #ff8c00)',
@@ -110,8 +145,10 @@ export default function ActionBar({ game }: ActionBarProps) {
           </motion.button>
         )}
 
-        {phase === 'thinking' && (
-          <span className="animate-pulse text-sm text-white/40">对局中...</span>
+        {(phase === 'thinking' || phase === 'dealing') && (
+          <span className="animate-pulse text-sm text-white/40">
+            {phase === 'dealing' ? '发牌中...' : '对局中...'}
+          </span>
         )}
       </div>
     </div>

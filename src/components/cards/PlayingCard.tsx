@@ -15,6 +15,7 @@ interface PlayingCardProps {
   selected?: boolean;
   disabled?: boolean;
   isCommunity?: boolean;
+  isNew?: boolean;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   onClick?: () => void;
   className?: string;
@@ -74,7 +75,6 @@ function CardFace({ card, s }: { card: Card; s: (typeof SIZES)[keyof typeof SIZE
         color,
       }}
     >
-      {/* Top-left corner */}
       <div
         className="absolute flex flex-col items-center leading-none font-bold"
         style={{ top: 2, left: 3, fontSize: s.corner }}
@@ -83,7 +83,6 @@ function CardFace({ card, s }: { card: Card; s: (typeof SIZES)[keyof typeof SIZE
         {!isJoker && <span style={{ fontSize: s.corner }}>{card.suit}</span>}
       </div>
 
-      {/* Center suit / joker text */}
       <div
         className="flex flex-1 items-center justify-center font-bold"
         style={{ fontSize: s.suit }}
@@ -91,7 +90,6 @@ function CardFace({ card, s }: { card: Card; s: (typeof SIZES)[keyof typeof SIZE
         {suitDisplay}
       </div>
 
-      {/* Bottom-right corner */}
       <div
         className="absolute flex flex-col items-center leading-none font-bold"
         style={{
@@ -114,6 +112,7 @@ export default function PlayingCard({
   selectable = false,
   selected = false,
   disabled = false,
+  isNew = false,
   size = 'md',
   onClick,
   className = '',
@@ -132,7 +131,7 @@ export default function PlayingCard({
         transformStyle: 'preserve-3d',
       }}
       animate={{
-        y: selected ? -8 : 0,
+        y: selected ? -16 : 0,
         scale: selected ? 1.08 : 1,
       }}
       whileHover={selectable && !disabled ? { scale: 1.04, y: -3 } : {}}
@@ -147,17 +146,23 @@ export default function PlayingCard({
           transformStyle: 'preserve-3d',
         }}
         animate={{ rotateY: faceDown ? 180 : 0 }}
-        transition={{ duration: 0.4, ease: 'easeInOut' }}
+        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
       >
         <CardFace card={card} s={s} />
         <CardBack s={s} />
       </motion.div>
 
-      {/* Selected glow */}
       {selected && (
         <div
           className="pointer-events-none absolute inset-0 rounded-lg"
           style={{ animation: 'card-select-glow 1.5s ease-in-out infinite' }}
+        />
+      )}
+
+      {isNew && !selected && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-lg"
+          style={{ animation: 'card-new-highlight 1.2s ease-out forwards' }}
         />
       )}
     </motion.div>

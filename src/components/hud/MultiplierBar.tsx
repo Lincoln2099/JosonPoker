@@ -30,12 +30,17 @@ export default function MultiplierBar({ currentRound }: MultiplierBarProps) {
                     : 'rgba(255,255,255,0.06)',
                 color: isCurrent ? '#fff' : isCompleted ? color : 'rgba(255,255,255,0.3)',
                 boxShadow: isCurrent ? `0 0 12px ${color}66` : 'none',
+                ...(isCurrent
+                  ? {
+                      animation: 'multiplier-breathe 2s ease-in-out infinite',
+                      ['--glow-color' as string]: color,
+                    }
+                  : {}),
               }}
             >
               {isCompleted ? '✓' : `×${mult}`}
             </div>
 
-            {/* Connector line */}
             {i < MULTS.length - 1 && (
               <div
                 className="absolute right-0 top-1/2 h-0.5 translate-x-full"

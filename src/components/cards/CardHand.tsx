@@ -24,6 +24,8 @@ export default function CardHand({ game }: CardHandProps) {
     ? new Set(humanResult.played.map((c) => c.id))
     : new Set<string>();
 
+  const newCardIds = new Set(game.newCards.map((c) => c.id));
+
   return (
     <div className="scrollbar-hide flex justify-center gap-1.5 overflow-x-auto px-2 py-1">
       <AnimatePresence mode="popLayout">
@@ -31,19 +33,26 @@ export default function CardHand({ game }: CardHandProps) {
           const selected = game.selectedIndices.includes(i);
           const isPlayed = playedIds.has(card.id);
           const dimmed = isResult && !isPlayed && humanResult != null;
+          const isNew = newCardIds.has(card.id);
 
           return (
             <motion.div
               key={card.id}
               layout
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              initial={{ opacity: 0, y: -100, scale: 0.5, rotate: -6 }}
               animate={{
                 opacity: dimmed ? 0.35 : 1,
                 scale: 1,
                 y: 0,
+                rotate: 0,
               }}
-              exit={{ opacity: 0, scale: 0.6, y: 20 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              exit={{ opacity: 0, scale: 0.5, y: -200 }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 20,
+                delay: i * 0.1,
+              }}
             >
               <PlayingCard
                 card={card}
@@ -51,6 +60,7 @@ export default function CardHand({ game }: CardHandProps) {
                 selectable={selectable}
                 selected={selected || (isLastRound && game.phase === 'select')}
                 disabled={!selectable}
+                isNew={isNew && game.phase === 'select'}
                 onClick={() => toggleCard(i)}
               />
             </motion.div>

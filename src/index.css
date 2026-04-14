@@ -54,5 +54,63 @@ html, body, #root {
   50%      { box-shadow: 0 0 12px var(--gold), 0 0 24px rgba(251,191,36,0.6); }
 }
 
+@keyframes card-new-highlight {
+  0%   { box-shadow: 0 0 0 2px var(--sky), 0 0 20px rgba(135,206,235,0.6); }
+  50%  { box-shadow: 0 0 0 3px var(--sky), 0 0 30px rgba(135,206,235,0.8); }
+  100% { box-shadow: 0 0 0 0px transparent, 0 0 0 transparent; }
+}
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10px) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(var(--rot, 720deg)) scale(var(--s-end, 0.5)); opacity: 0; }
+}
+
+@keyframes float-up-score {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  70%  { opacity: 1; transform: translateY(-40px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(0.9); }
+}
+
+@keyframes red-vignette {
+  0%   { box-shadow: inset 0 0 100px rgba(248,113,113,0.5); }
+  100% { box-shadow: inset 0 0 100px rgba(248,113,113,0); }
+}
+
+@keyframes golden-flash {
+  0%   { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+@keyframes multiplier-breathe {
+  0%, 100% { box-shadow: 0 0 8px var(--glow-color, var(--field)), 0 0 16px color-mix(in srgb, var(--glow-color, var(--field)) 40%, transparent); }
+  50%      { box-shadow: 0 0 16px var(--glow-color, var(--field)), 0 0 32px color-mix(in srgb, var(--glow-color, var(--field)) 60%, transparent); }
+}
+
+@keyframes loading-fill {
+  0%   { width: 0; }
+  100% { width: 100%; }
+}
+
+@keyframes countdown-pop {
+  0%   { transform: scale(2); opacity: 0; }
+  30%  { transform: scale(1); opacity: 1; }
+  80%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.5); opacity: 0; }
+}
+
+@keyframes emoji-pop {
+  0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+  60%  { transform: scale(1.3) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
