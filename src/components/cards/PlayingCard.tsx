@@ -127,17 +127,22 @@ export default function PlayingCard({
       style={{
         width: s.w,
         height: s.h,
-        perspective: 600,
+        perspective: 800,
         transformStyle: 'preserve-3d',
       }}
       animate={{
-        y: selected ? -16 : 0,
-        scale: selected ? 1.08 : 1,
+        y: selected ? -24 : 0,
+        scale: selected ? 1.12 : 1,
       }}
-      whileHover={selectable && !disabled ? { scale: 1.04, y: -3 } : {}}
+      whileHover={
+        selectable && !disabled
+          ? { scale: 1.06, y: -6, rotateZ: -1 }
+          : {}
+      }
       whileTap={selectable && !disabled ? { scale: 0.97 } : {}}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 22 }}
     >
+      {/* 3D card wrapper with shadow that grows on select */}
       <motion.div
         className="relative"
         style={{
@@ -145,13 +150,36 @@ export default function PlayingCard({
           height: s.h,
           transformStyle: 'preserve-3d',
         }}
-        animate={{ rotateY: faceDown ? 180 : 0 }}
+        animate={{
+          rotateY: faceDown ? 180 : 0,
+          boxShadow: selected
+            ? '0 20px 40px rgba(0,0,0,0.45), 0 8px 16px rgba(0,0,0,0.3)'
+            : '0 4px 12px rgba(0,0,0,0.2)',
+        }}
         transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
       >
         <CardFace card={card} s={s} />
         <CardBack s={s} />
+
+        {/* Edge thickness simulation during flip */}
+        {faceDown && (
+          <div
+            className="pointer-events-none absolute rounded-sm"
+            style={{
+              width: 2,
+              height: s.h - 4,
+              top: 2,
+              left: s.w / 2 - 1,
+              background: 'linear-gradient(180deg, #c9a44c, #8b7335)',
+              transformOrigin: 'center',
+              transform: 'rotateY(90deg) translateZ(0)',
+              opacity: 0.4,
+            }}
+          />
+        )}
       </motion.div>
 
+      {/* Selected glow */}
       {selected && (
         <div
           className="pointer-events-none absolute inset-0 rounded-lg"
@@ -159,6 +187,7 @@ export default function PlayingCard({
         />
       )}
 
+      {/* New card highlight */}
       {isNew && !selected && (
         <div
           className="pointer-events-none absolute inset-0 rounded-lg"
