@@ -269,9 +269,6 @@ export default function MenuScreen() {
         }}
         whileHover={{ scale: 1.04, boxShadow: '0 6px 32px rgba(45,138,78,0.6)' }}
         whileTap={{ scale: 0.96 }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
       >
         开始游戏
       </motion.button>
