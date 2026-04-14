@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
+import { usePerformance } from '../../hooks/usePerformance';
 
 const PETAL_COUNT = 18;
 
@@ -53,6 +54,8 @@ interface PokerTableProps {
 }
 
 export default function PokerTable({ children }: PokerTableProps) {
+  const { isLowEnd } = usePerformance();
+
   return (
     <div className="relative mx-auto w-full" style={{ aspectRatio: '3 / 2', maxWidth: 800 }}>
       {/* Outer shadow & bevel */}
@@ -118,8 +121,8 @@ export default function PokerTable({ children }: PokerTableProps) {
       <CornerFlag className="bottom-[12%] left-[12%] -rotate-90" />
       <CornerFlag className="bottom-[12%] right-[12%] rotate-180" />
 
-      {/* Cherry blossoms */}
-      <SakuraPetals />
+      {/* Cherry blossoms — disabled on low-end devices */}
+      {!isLowEnd && <SakuraPetals />}
 
       {/* Children (community cards, seat ring, etc.) */}
       <div className="absolute inset-0 flex items-center justify-center">

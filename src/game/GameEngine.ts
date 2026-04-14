@@ -122,7 +122,7 @@ export function executeRound(state: GameState): { state: GameState; results: Rou
         combo = [...played, cc];
       } else {
         const style = p.style ?? '稳健';
-        const pair = aiPick(p.hand, cc, style, r);
+        const pair = aiPick(p.hand, cc, style, r, state.comm, state.np, p.score, state.loserRank);
         played = [p.hand[pair[0]!] as Card, p.hand[pair[1]!] as Card];
         combo = [...played, cc];
       }

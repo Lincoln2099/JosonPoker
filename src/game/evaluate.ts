@@ -122,3 +122,19 @@ export function estimateRank(
   }
   return Math.round(totalRank / sims);
 }
+
+export function estimateWinRate(
+  hand: Card[],
+  selectedIndices: [number, number],
+  communityCard: Card | null,
+  allCommunity: Card[],
+  totalPlayers: number,
+  _samples: number = 50,
+): number {
+  const knownIds = new Set<string>();
+  for (const c of hand) knownIds.add(c.id);
+  for (const c of allCommunity) knownIds.add(c.id);
+
+  const selected = [hand[selectedIndices[0]]!, hand[selectedIndices[1]]!];
+  return estimateRank(selected, communityCard, totalPlayers, { knownCardIds: knownIds });
+}

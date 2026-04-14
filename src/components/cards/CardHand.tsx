@@ -1,8 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
+import { useResponsive } from '../../hooks/useResponsive';
 import PlayingCard from './PlayingCard';
 import type { GameState } from '../../game/GameEngine';
 import type { RoundResult } from '../../game/payout';
+
+const SIZE_MAP = { mobile: 'sm', tablet: 'md', desktop: 'lg' } as const;
 
 interface CardHandProps {
   game: GameState;
@@ -10,6 +13,8 @@ interface CardHandProps {
 
 export default function CardHand({ game }: CardHandProps) {
   const toggleCard = useGameStore((s) => s.toggleCardSelection);
+  const bp = useResponsive();
+  const cardSize = SIZE_MAP[bp];
   const human = game.players[0]!;
   const isLastRound = game.round === 4;
   const selectable = game.phase === 'select' && !isLastRound;
@@ -53,10 +58,11 @@ export default function CardHand({ game }: CardHandProps) {
                 damping: 20,
                 delay: i * 0.1,
               }}
+              className="p-1"
             >
               <PlayingCard
                 card={card}
-                size="md"
+                size={cardSize}
                 selectable={selectable}
                 selected={selected || (isLastRound && game.phase === 'select')}
                 disabled={!selectable}

@@ -4,6 +4,11 @@ import { ROUND_CN, MULTS } from '../../game/Card';
 import type { GameState } from '../../game/GameEngine';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
+const RANK_BG = [
+  'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))',
+  'linear-gradient(135deg, rgba(192,192,192,0.12), rgba(192,192,192,0.04))',
+  'linear-gradient(135deg, rgba(205,127,50,0.12), rgba(205,127,50,0.04))',
+];
 
 function Standings({ game }: { game: GameState }) {
   const sorted = [...game.players].sort((a, b) => b.score - a.score);
@@ -26,16 +31,23 @@ function Standings({ game }: { game: GameState }) {
             style={{
               background: p.isHuman
                 ? 'rgba(45,138,78,0.2)'
-                : 'rgba(255,255,255,0.04)',
+                : RANK_BG[i] ?? 'rgba(255,255,255,0.04)',
               border: p.isHuman
                 ? '1px solid rgba(45,138,78,0.4)'
-                : '1px solid rgba(255,255,255,0.06)',
+                : i < 3
+                  ? '1px solid rgba(255,255,255,0.08)'
+                  : '1px solid rgba(255,255,255,0.04)',
             }}
           >
             <div className="flex items-center gap-2.5">
-              <span className="w-6 text-center text-lg">{MEDALS[i] ?? `${i + 1}`}</span>
+              <span className="w-8 text-center text-xl">{MEDALS[i] ?? `#${i + 1}`}</span>
               <span className="text-xl">{p.emoji}</span>
-              <span className="font-bold">{p.name}</span>
+              <div className="flex flex-col">
+                <span className="font-bold leading-tight">{p.name}</span>
+                {p.style && (
+                  <span className="text-[10px] text-white/30">{p.style}</span>
+                )}
+              </div>
             </div>
             <span className={`text-lg font-black ${scoreColor}`}>
               {p.score > 0 ? '+' : ''}
@@ -127,11 +139,26 @@ export default function GameOverScreen() {
   const goToMenu = useGameStore((s) => s.goToMenu);
 
   const humanScore = game.players[0]!.score;
+  const humanRank = [...game.players]
+    .sort((a, b) => b.score - a.score)
+    .findIndex((p) => p.isHuman) + 1;
+
+  const resultEmoji = humanRank === 1 ? '🏆' : humanRank === 2 ? '🥈' : humanRank === 3 ? '🥉' : humanScore >= 0 ? '🎮' : '😢';
 
   return (
     <div className="flex min-h-dvh flex-col items-center px-4 py-8">
+      {/* Hero result */}
+      <motion.div
+        className="mb-2 text-5xl"
+        initial={{ scale: 0, rotate: -10 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 250, damping: 15 }}
+      >
+        {resultEmoji}
+      </motion.div>
+
       <motion.h1
-        className="mb-2 text-3xl font-black"
+        className="mb-2 text-4xl font-black"
         style={{
           background:
             humanScore > 0
@@ -141,22 +168,28 @@ export default function GameOverScreen() {
                 : 'linear-gradient(135deg, var(--chalk), var(--sky))',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
+          filter: humanScore > 0 ? 'drop-shadow(0 2px 8px rgba(74,222,128,0.3))' : undefined,
         }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
       >
         {humanScore > 0 ? '大获全胜！' : humanScore < 0 ? '惜败...' : '游戏结束'}
       </motion.h1>
+
       <motion.p
-        className="mb-6 text-sm text-white/40"
+        className="mb-6 flex items-center gap-2 text-sm text-white/40"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
+        transition={{ delay: 0.2 }}
       >
-        总得分：
-        <span className={humanScore > 0 ? 'text-[var(--win)]' : humanScore < 0 ? 'text-[var(--lose)]' : 'text-white/60'}>
-          {humanScore > 0 ? '+' : ''}{humanScore}
+        <span>第{humanRank}名</span>
+        <span className="text-white/20">·</span>
+        <span>
+          总得分：
+          <span className={humanScore > 0 ? 'font-bold text-[var(--win)]' : humanScore < 0 ? 'font-bold text-[var(--lose)]' : 'text-white/60'}>
+            {humanScore > 0 ? '+' : ''}{humanScore}
+          </span>
         </span>
       </motion.p>
 
@@ -176,7 +209,7 @@ export default function GameOverScreen() {
           onClick={quickRestart}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
-          className="rounded-xl px-8 py-3 text-lg font-bold"
+          className="min-h-[44px] rounded-xl px-8 py-3 text-lg font-bold"
           style={{
             background: 'linear-gradient(135deg, var(--field), var(--field-light))',
             boxShadow: '0 4px 16px rgba(45,138,78,0.3)',
@@ -188,7 +221,7 @@ export default function GameOverScreen() {
           onClick={goToMenu}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
-          className="rounded-xl px-8 py-3 text-lg font-bold"
+          className="min-h-[44px] rounded-xl px-8 py-3 text-lg font-bold"
           style={{
             background: 'rgba(255,255,255,0.08)',
             border: '1px solid rgba(255,255,255,0.12)',

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { usePerformance } from '../../hooks/usePerformance';
 
 const SPRING_COLORS = ['#4ade80', '#fbbf24', '#ffffff', '#ffb7c5', '#87ceeb', '#ffd700'];
 
@@ -11,7 +12,9 @@ export default function ParticleSystem({
   density = 'normal',
   colors = SPRING_COLORS,
 }: ParticleSystemProps) {
-  const count = density === 'high' ? 60 : 30;
+  const { isLowEnd } = usePerformance();
+  const base = density === 'high' ? 60 : 30;
+  const count = isLowEnd ? Math.round(base / 3) : base;
 
   const particles = useMemo(() => {
     return Array.from({ length: count }, (_, i) => {

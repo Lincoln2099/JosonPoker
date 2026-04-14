@@ -83,7 +83,7 @@ export default function ActionBar({ game }: ActionBarProps) {
             disabled={!canConfirm}
             whileHover={canConfirm ? { scale: 1.03 } : {}}
             whileTap={canConfirm ? { scale: 0.97 } : {}}
-            className="rounded-xl px-6 py-2.5 text-base font-bold transition-all"
+            className="min-h-[44px] min-w-[44px] rounded-xl px-6 py-2.5 text-base font-bold transition-all"
             style={{
               background: canConfirm
                 ? 'linear-gradient(135deg, var(--field), var(--field-light))'
@@ -102,7 +102,7 @@ export default function ActionBar({ game }: ActionBarProps) {
             onClick={confirmPlay}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="rounded-xl px-6 py-2.5 text-base font-bold"
+            className="min-h-[44px] min-w-[44px] rounded-xl px-6 py-2.5 text-base font-bold"
             style={{
               background: 'linear-gradient(135deg, var(--sunlight), #ff8c00)',
               color: '#1a1a2e',
@@ -118,7 +118,7 @@ export default function ActionBar({ game }: ActionBarProps) {
             onClick={nextRound}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="rounded-xl px-6 py-2.5 text-base font-bold"
+            className="min-h-[44px] min-w-[44px] rounded-xl px-6 py-2.5 text-base font-bold"
             style={{
               background: 'linear-gradient(135deg, var(--field), var(--field-light))',
               color: '#fff',
@@ -134,7 +134,7 @@ export default function ActionBar({ game }: ActionBarProps) {
             onClick={goToGameOver}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="rounded-xl px-6 py-2.5 text-base font-bold"
+            className="min-h-[44px] min-w-[44px] rounded-xl px-6 py-2.5 text-base font-bold"
             style={{
               background: 'linear-gradient(135deg, var(--sunlight), #ff8c00)',
               color: '#1a1a2e',

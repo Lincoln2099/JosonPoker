@@ -1,6 +1,7 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
+import { useResponsive } from '../../hooks/useResponsive';
 import { MULTS, ROUND_CN, STEP_COLORS } from '../../game/Card';
 
 import PokerTable from '../table/PokerTable';
@@ -70,10 +71,42 @@ function RoundSplash({ round }: { round: number }) {
   );
 }
 
+function LandscapeToast() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('landscape-dismissed')) return;
+    const check = () => {
+      if (window.innerHeight > window.innerWidth && window.innerWidth < 640) {
+        setShow(true);
+        sessionStorage.setItem('landscape-dismissed', '1');
+        setTimeout(() => setShow(false), 3000);
+      }
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  if (!show) return null;
+  return (
+    <motion.div
+      className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-xl bg-black/80 px-4 py-2 text-sm text-white/90 backdrop-blur"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      横屏体验更佳 🔄
+    </motion.div>
+  );
+}
+
 export default function GameScreen() {
   const game = useGameStore((s) => s.game)!;
   const setPhase = useGameStore((s) => s.setPhase);
   const confirmPlay = useGameStore((s) => s.confirmPlay);
+  const bp = useResponsive();
+  const isMobile = bp === 'mobile';
 
   const { round, phase } = game;
   const isLastRound = round === 4;
@@ -131,7 +164,9 @@ export default function GameScreen() {
   const isBigWin = showWin && round >= 2 && humanResult.rank === 1;
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={`flex min-h-dvh flex-col ${isMobile ? 'pb-[160px]' : ''}`}>
+      <LandscapeToast />
+
       {/* Splash overlay */}
       <AnimatePresence>
         {phase === 'round-splash' && <RoundSplash round={round} />}
@@ -183,8 +218,10 @@ export default function GameScreen() {
         </PokerTable>
       </div>
 
-      {/* Bottom area */}
-      <div className="shrink-0">
+      {/* Bottom area — fixed on mobile */}
+      <div
+        className={`shrink-0 ${isMobile ? 'fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-[var(--bg-deep)] via-[var(--bg-deep)]/95 to-transparent pt-3 pb-[env(safe-area-inset-bottom)]' : ''}`}
+      >
         {phase !== 'round-splash' && phase !== 'flip-reveal' && (
           <>
             <CardHand game={game} />

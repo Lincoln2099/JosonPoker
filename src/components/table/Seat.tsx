@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useResponsive } from '../../hooks/useResponsive';
 import type { PlayerState } from '../../game/GameEngine';
 import type { RoundResult } from '../../game/payout';
 import type { GamePhase } from '../../game/GameEngine';
@@ -19,6 +20,8 @@ interface SeatProps {
 }
 
 export default function Seat({ player, result, phase, compact }: SeatProps) {
+  const bp = useResponsive();
+  const isMobile = bp === 'mobile';
   const showResult = phase === 'result' && result;
   const scoreColor =
     player.score > 0 ? 'text-[var(--win)]' : player.score < 0 ? 'text-[var(--lose)]' : 'text-white/60';
@@ -45,7 +48,7 @@ export default function Seat({ player, result, phase, compact }: SeatProps) {
       {/* Avatar */}
       <div className="relative">
         <div
-          className="flex items-center justify-center rounded-full text-lg shadow-lg"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-lg shadow-lg"
           style={{
             width: compact ? 32 : 40,
             height: compact ? 32 : 40,
@@ -69,14 +72,16 @@ export default function Seat({ player, result, phase, compact }: SeatProps) {
         )}
       </div>
 
-      {/* Name */}
-      <span className="text-[10px] font-semibold leading-tight text-white/90 drop-shadow">
-        {player.name}
-      </span>
+      {/* Name — hidden on mobile */}
+      {!isMobile && (
+        <span className="text-[10px] font-semibold leading-tight text-white/90 drop-shadow">
+          {player.name}
+        </span>
+      )}
 
-      {/* Style tag */}
-      {!compact && player.style && (
-        <span className="hidden text-[8px] text-white/40 sm:inline">{player.style}</span>
+      {/* Style tag — hidden on mobile & compact */}
+      {!compact && !isMobile && player.style && (
+        <span className="text-[8px] text-white/40">{player.style}</span>
       )}
 
       {/* Score */}
@@ -85,10 +90,12 @@ export default function Seat({ player, result, phase, compact }: SeatProps) {
         {player.score}
       </span>
 
-      {/* Hand count badge */}
-      <span className="rounded-full bg-white/10 px-1.5 text-[8px] text-white/50">
-        {player.hand.length}牌
-      </span>
+      {/* Hand count badge — hidden on mobile */}
+      {!isMobile && (
+        <span className="rounded-full bg-white/10 px-1.5 text-[8px] text-white/50">
+          {player.hand.length}牌
+        </span>
+      )}
 
       {/* Result overlay */}
       {showResult && (
