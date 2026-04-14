@@ -6,7 +6,7 @@ import GameOverScreen from './components/screens/GameOverScreen';
 export default function App() {
   const screen = useGameStore((s) => s.screen);
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-dvh text-white">
       {screen === 'menu' && <MenuScreen />}
       {screen === 'game' && <GameScreen />}
       {screen === 'gameover' && <GameOverScreen />}
