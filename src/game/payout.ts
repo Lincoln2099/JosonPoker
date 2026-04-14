@@ -1,5 +1,6 @@
-import { Card } from './Card';
-import { EvalResult, cmpEval } from './evaluate';
+import type { Card } from './Card';
+import { cmpEval } from './evaluate';
+import type { EvalResult } from './evaluate';
 
 export interface RoundResult {
   pi: number;
@@ -35,7 +36,7 @@ export function calcPayouts(
   ante: number,
 ): void {
   const weights = calcWeights(np, loserRank);
-  const wTotal = weights.reduce((s, w) => s + (w || 0), 0);
+  const wTotal = weights.reduce<number>((s, w) => s + (w ?? 0), 0);
   const sorted = [...results].sort((a, b) => cmpEval(b.ev, a.ev));
 
   const groups: RoundResult[][] = [];
