@@ -539,7 +539,9 @@ export default function ChickenCatchScreen() {
   }, []);
 
   const handlePick = (n: number) => {
-    if (selected !== null || confirmed) return;
+    // 已经按下"抓它"进入抓取动画后才锁定，否则一直允许切换
+    if (confirmed) return;
+    if (n === selected) return; // 点同一只无效，避免抖动
     playSound('select');
     setSelected(n);
     requestAnimationFrame(() => {
@@ -738,7 +740,7 @@ export default function ChickenCatchScreen() {
                     number={n}
                     selected={isSelected}
                     caught={isCaught}
-                    pickable={selected === null}
+                    pickable={!confirmed}
                     onPick={() => handlePick(n)}
                     dimmed={dimmed}
                     flyUp={isSelected && flyUp}
@@ -802,6 +804,14 @@ export default function ChickenCatchScreen() {
               >
                 选中 · 老{CN_NUM[selected]} 号 ({selected}/{np})
               </div>
+              {!confirmed && (
+                <div
+                  className="text-[10px] tracking-wider"
+                  style={{ color: 'rgba(168,160,144,0.7)' }}
+                >
+                  可继续点其它小鸡切换 · 确认请按下方按钮
+                </div>
+              )}
               <motion.button
                 onClick={handleConfirm}
                 disabled={confirmed}
