@@ -17,6 +17,7 @@ export const TABLE_PORTRAIT = '/assets/table-portrait.png';
 export const TABLE_LANDSCAPE = '/assets/table-landscape.png';
 export const LOADING_PORTRAIT = '/assets/loading-portrait.jpg';
 export const LOADING_LANDSCAPE = '/assets/loading-landscape.png';
+export const CHICKEN_POSE = '/assets/chicken-pose.png';
 
 /** 收集所有需要预加载的关键图片。 */
 export function collectPreloadList(): string[] {
@@ -25,6 +26,7 @@ export function collectPreloadList(): string[] {
     TABLE_LANDSCAPE,
     LOADING_PORTRAIT,
     LOADING_LANDSCAPE,
+    CHICKEN_POSE,
   ];
   const moods: AvatarMood[] = ['neutral', 'think', 'win', 'lose'];
   for (let i = 1; i <= TOTAL_CHARACTERS; i++) {

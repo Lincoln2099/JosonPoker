@@ -2,10 +2,10 @@ import { useCallback, useRef, useState } from 'react';
 import type { Card } from '../../game/Card';
 
 const SIZES = {
-  xs: { w: 20, h: 28, rank: '6px', suit: '8px', corner: '4px' },
-  sm: { w: 48, h: 68, rank: '10px', suit: '16px', corner: '8px' },
-  md: { w: 60, h: 85, rank: '12px', suit: '22px', corner: '9px' },
-  lg: { w: 72, h: 102, rank: '14px', suit: '28px', corner: '10px' },
+  xs: { w: 34, h: 48, rank: '8px', suit: '14px', corner: '7px', radius: 3 },
+  sm: { w: 48, h: 68, rank: '10px', suit: '16px', corner: '8px', radius: 5 },
+  md: { w: 60, h: 85, rank: '12px', suit: '22px', corner: '9px', radius: 7 },
+  lg: { w: 72, h: 102, rank: '14px', suit: '28px', corner: '10px', radius: 8 },
 } as const;
 
 interface PlayingCardProps {
@@ -24,7 +24,7 @@ interface PlayingCardProps {
 function CardBack({ s }: { s: (typeof SIZES)[keyof typeof SIZES] }) {
   return (
     <div
-      className="absolute inset-0 rounded-lg"
+      className="absolute inset-0"
       style={{
         backfaceVisibility: 'hidden',
         transform: 'rotateY(180deg)',
@@ -36,12 +36,16 @@ function CardBack({ s }: { s: (typeof SIZES)[keyof typeof SIZES] }) {
           var(--field) 8px
         )`,
         border: '2px solid var(--gold)',
+        borderRadius: s.radius,
         width: s.w,
         height: s.h,
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       }}
     >
-      <div className="absolute inset-1 rounded border border-[var(--gold)]/30" />
+      <div
+        className="absolute inset-1 border border-[var(--gold)]/30"
+        style={{ borderRadius: Math.max(s.radius - 2, 1) }}
+      />
     </div>
   );
 }
@@ -66,13 +70,14 @@ function CardFace({ card, s }: { card: Card; s: (typeof SIZES)[keyof typeof SIZE
 
   return (
     <div
-      className="absolute inset-0 flex flex-col rounded-lg"
+      className="absolute inset-0 flex flex-col"
       style={{
         backfaceVisibility: 'hidden',
         background: bgStyle,
         width: s.w,
         height: s.h,
         border: `1px solid ${isJoker ? 'var(--gold)' : 'rgba(0,0,0,0.12)'}`,
+        borderRadius: s.radius,
         boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
         color,
       }}
@@ -206,8 +211,9 @@ export default function PlayingCard({
       {/* Mouse-following highlight — OUTSIDE of 3D context */}
       {isInteractive && !faceDown && (tilt.rx !== 0 || tilt.ry !== 0) && (
         <div
-          className="pointer-events-none absolute inset-0 rounded-lg"
+          className="pointer-events-none absolute inset-0"
           style={{
+            borderRadius: s.radius,
             background: `radial-gradient(circle at ${tilt.hx}% ${tilt.hy}%, rgba(255,255,255,0.06), transparent 60%)`,
           }}
         />
@@ -229,9 +235,10 @@ export default function PlayingCard({
       {/* New card highlight */}
       {isNew && !selected && (
         <div
-          className="pointer-events-none absolute rounded-lg"
+          className="pointer-events-none absolute"
           style={{
             inset: '-4px',
+            borderRadius: s.radius + 3,
             border: '2px solid #7bb8cc',
             boxShadow: '0 0 8px rgba(123,184,204,0.3)',
           }}
