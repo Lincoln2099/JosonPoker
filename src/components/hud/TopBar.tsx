@@ -12,7 +12,7 @@ export default function TopBar({ round, loserRank, np }: TopBarProps) {
 
   return (
     <motion.div
-      className="relative z-20 flex items-center justify-between px-4 py-2"
+      className="relative z-20 flex items-center justify-between pl-4 pr-14 py-2 sm:pr-4"
       style={{
         background: 'rgba(8,22,14,0.9)',
         borderBottom: '1px solid rgba(240,202,80,0.12)',

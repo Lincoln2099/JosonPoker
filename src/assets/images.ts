@@ -19,6 +19,16 @@ export const LOADING_PORTRAIT = '/assets/loading-portrait.jpg';
 export const LOADING_LANDSCAPE = '/assets/loading-landscape.png';
 export const CHICKEN_POSE = '/assets/chicken-pose.png';
 
+/** 抓鸡场景：编号 2~8 各自一张独特的 3D Pixar 风格鸡 PNG */
+export function getChickenSrc(num: number): string {
+  const clamped = Math.max(2, Math.min(8, num));
+  return `/assets/chickens/chicken-${clamped}.png`;
+}
+
+/** 抓鸡动画：Pixar 3D 风格的张开手和握拳（带绿色袖子 + 金色袖口） */
+export const HAND_OPEN = '/assets/hand-open.png';
+export const HAND_FIST = '/assets/hand-fist.png';
+
 /** 收集所有需要预加载的关键图片。 */
 export function collectPreloadList(): string[] {
   const list: string[] = [
@@ -27,7 +37,12 @@ export function collectPreloadList(): string[] {
     LOADING_PORTRAIT,
     LOADING_LANDSCAPE,
     CHICKEN_POSE,
+    HAND_OPEN,
+    HAND_FIST,
   ];
+  for (let n = 2; n <= 8; n++) {
+    list.push(getChickenSrc(n));
+  }
   const moods: AvatarMood[] = ['neutral', 'think', 'win', 'lose'];
   for (let i = 1; i <= TOTAL_CHARACTERS; i++) {
     for (const m of moods) {

@@ -3,15 +3,81 @@ import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { useGameStore } from '../../store/useGameStore';
 import { playSound, playBgm, stopBgm } from '../../hooks/useSound';
-import { TABLE_LANDSCAPE, CHICKEN_POSE } from '../../assets/images';
+import { getChickenSrc, HAND_OPEN, HAND_FIST } from '../../assets/images';
 
 const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
 
+/** 每只鸡独有的 idle "小跑/小动作"帧动画 —— 让每只活起来、性格各异 */
+type IdleAnim = {
+  y?: number[];
+  x?: number[];
+  rotate?: number[];
+  scaleX?: number[];
+  scaleY?: number[];
+  duration: number;
+};
+
+const IDLE_PATTERNS: Record<number, IdleAnim> = {
+  2: {
+    // 白色毛球 Silkie —— 慢吞吞大幅绵软上下 + 轻微左右歪头
+    y: [0, -5, -2, -6, -1, 0],
+    rotate: [0, -1.5, 1, -1, 2, 0],
+    scaleY: [1, 1.03, 1, 1.02, 1, 1],
+    duration: 3.2,
+  },
+  3: {
+    // 武士公鸡 —— 昂首挺胸迈阔步，身体左右晃刀
+    y: [0, -7, -2, -6, 0],
+    rotate: [-3, 2, -2, 3, -3],
+    scaleY: [1, 1.05, 1, 1.03, 1],
+    duration: 2.0,
+  },
+  4: {
+    // 蒸汽朋克 —— 机械抽搐式快速小幅晃动 + 齿轮感微转
+    y: [0, -2, 0, -3, 0],
+    x: [0, 1.5, -1, 2, 0],
+    rotate: [-2, 1, -2, 2, -1],
+    duration: 1.4,
+  },
+  5: {
+    // 星空鸡 —— 超慢大幅悬浮 + 呼吸膨胀（漂浮感）
+    y: [0, -8, -3, -9, -2, 0],
+    rotate: [0, 1.2, -1, 1.5, 0],
+    scaleX: [1, 1.02, 1, 1.03, 1, 1],
+    scaleY: [1, 1.03, 1, 1.02, 1, 1],
+    duration: 3.8,
+  },
+  6: {
+    // 青花瓷 —— 典雅慢摇扇 + 柔和转身
+    y: [0, -3, 0, -2, 0],
+    rotate: [0, 3.5, 0, -3.5, 0],
+    scaleY: [1, 1.02, 1, 1.01, 1],
+    duration: 3.0,
+  },
+  7: {
+    // 熔岩鸡 —— 暴躁快速摇头 + 羽毛喷张
+    y: [0, -4, 0, -3, 0],
+    rotate: [0, -4, 3, -4, 1, 0],
+    scaleX: [1, 0.97, 1.03, 0.98, 1],
+    scaleY: [1, 1.04, 0.98, 1.03, 1],
+    duration: 1.6,
+  },
+  8: {
+    // 忍者 —— 蹲伏警戒 + 左右偷瞄 + 不规则突然的动作
+    y: [0, -6, -1, -7, -2, 0],
+    x: [0, -2, 2, -1, 0],
+    rotate: [0, -2, 2, -3, 1, 0],
+    scaleY: [1, 1.03, 0.97, 1.04, 1],
+    duration: 2.2,
+  },
+};
+
 /** ============================================================
- *  3D 卡通鸡 —— 直接用 AI 生成的与启动图同款的 Pixar 风格鸡 PNG
- *  - 用 hue-rotate 让不同编号的鸡略有色差（冠/羽毛颜色微变），避免完全雷同
- *  - 编号汉字以金色徽章叠加在鸡身上
- *  - 选中时金光 + 缓慢呼吸
+ *  3D 卡通鸡 —— 每个编号一张独立的 Pixar 风格鸡 PNG（白鸡/红公鸡/
+ *  金色胖母鸡/银丝鸡/黑白花鸡/彩色公鸡…），与加载图风格一致。
+ *  - 每只鸡有独有的 idle 小动作（IDLE_PATTERNS）
+ *  - 选中时鸡身后出现柔和金色光环
+ *  - 胸前挂金色汉字编号徽章
  *  ============================================================ */
 function ChickenFigure({
   number,
@@ -30,14 +96,24 @@ function ChickenFigure({
   onPick: () => void;
   dimmed: boolean;
   flyUp: boolean;
-  /** 视觉缩放（1 = 112×112）。鸡数量多时自动缩小避免出框。 */
+  /** 视觉缩放（1 = 260×260）。鸡数量多时自动缩小避免出框。 */
   scale?: number;
 }) {
-  const w = 112 * scale;
-  const h = 112 * scale;
-  // 每只鸡一个轻微的色相偏移，让不同编号的鸡看上去不完全一样（-15° ~ +30°）
-  const hueShift = ((number - 2) * 11) % 45 - 10;
-  const tagSize = Math.max(22, 28 * scale);
+  const w = 260 * scale;
+  const h = 260 * scale;
+  const bobPhase = ((number * 13) % 7) * 0.15; // 0~0.9s 错位，让各只鸡不同步
+  const tagSize = Math.max(24, 34 * scale);
+  const idle = IDLE_PATTERNS[number] ?? IDLE_PATTERNS[2];
+
+  // 构建 animate 对象时过滤掉 undefined，避免 framer 瞬间重置未定义的 transform
+  const idleAnim: Record<string, number[]> = {};
+  if (idle.y) idleAnim.y = idle.y;
+  if (idle.x) idleAnim.x = idle.x;
+  if (idle.rotate) idleAnim.rotate = idle.rotate;
+  if (idle.scaleX) idleAnim.scaleX = idle.scaleX;
+  if (idle.scaleY) idleAnim.scaleY = idle.scaleY;
+  const selectedAnim: Record<string, number[]> = { ...idleAnim };
+  if (idle.y) selectedAnim.y = idle.y.map((v) => v * 1.3);
   return (
     <motion.button
       type="button"
@@ -50,64 +126,143 @@ function ChickenFigure({
         border: 'none',
         padding: 0,
         cursor: pickable ? 'pointer' : 'default',
-        opacity: dimmed ? 0.32 : 1,
-        filter: dimmed ? 'grayscale(0.55) brightness(0.6)' : 'none',
+        opacity: dimmed ? 0.38 : 1,
+        filter: dimmed ? 'grayscale(0.5) brightness(0.65)' : 'none',
         transition: 'opacity .35s ease, filter .35s ease',
+        // 被抓/飞走时以脖子位置（顶部 22%）为支点摇摆 → "吊着"的效果
+        transformOrigin: caught || flyUp ? '50% 22%' : '50% 50%',
       }}
       animate={
         flyUp
-          ? { y: -380, scale: 0.55, rotate: -10, opacity: 0 }
+          ? {
+              // 被手抓着带走：跟手的上升 y 保持同步（按 scale 缩放），边飞边摇摆倾斜
+              y: -600 * scale,
+              x: [0, -4 * scale, 3 * scale, -2 * scale, 0],
+              scale: 0.85,
+              rotate: [-2, 8, -4, 10, 6],
+              opacity: [1, 1, 1, 0.6, 0],
+            }
           : caught
-            ? { x: [0, -2, 2, -1.5, 0], y: [0, 1, 0], scale: 0.96 }
+            ? {
+                // 被握住瞬间：脖子被掐，身体被拎起来一点 + 小幅挣扎摇摆（按 scale 缩放位移）
+                y: [0, -4 * scale, -6 * scale, -5 * scale],
+                x: [0, -2 * scale, 2 * scale, -1.5 * scale, 0],
+                scaleY: [1, 1.08, 1.04, 1.06],
+                scaleX: [1, 0.95, 0.98, 0.96],
+                rotate: [0, -3, 2, -1],
+              }
             : selected
-              ? { y: [0, -2, 0] }
-              : { y: [0, -1, 0] }
+              ? selectedAnim
+              : idleAnim
       }
       transition={
         flyUp
-          ? { duration: 0.85, delay: 0.05, ease: [0.4, 0, 0.3, 1] }
+          ? { duration: 0.85, delay: 0.08, ease: [0.4, 0, 0.3, 1] }
           : caught
-            ? { duration: 0.45, ease: 'easeOut', repeat: 1, repeatType: 'mirror' }
+            ? { duration: 0.5, ease: 'easeOut' }
             : selected
-              ? { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
-              : { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
+              ? {
+                  duration: idle.duration * 0.7,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: bobPhase,
+                }
+              : {
+                  duration: idle.duration,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: bobPhase,
+                }
       }
       whileHover={pickable ? { y: -4 } : undefined}
       whileTap={pickable ? { scale: 0.97 } : undefined}
     >
+      {/* 选中时：鸡身后柔和金色光环
+          外层 wrapper 负责居中（transform translate 不会被 framer 的 animate scale 覆盖），
+          内层 motion.div 负责 opacity+scale 脉冲，保证光环永远对准鸡身中心。 */}
+      {selected && !caught && !flyUp && (
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: '50%',
+            top: '50%',
+            width: 0,
+            height: 0,
+            zIndex: 0,
+          }}
+        >
+          <motion.div
+            className="pointer-events-none absolute"
+            style={{
+              left: -w * 0.85,
+              top: -h * 0.85,
+              width: w * 1.7,
+              height: h * 1.7,
+              borderRadius: '50%',
+              background:
+                'radial-gradient(circle, rgba(255,220,120,0.55) 0%, rgba(255,195,90,0.28) 28%, rgba(255,175,60,0.12) 52%, transparent 78%)',
+              filter: 'blur(5px)',
+            }}
+            animate={{ opacity: [0.6, 1, 0.6], scale: [0.95, 1.06, 0.95] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        </div>
+      )}
+
       {/* 地面阴影 */}
       <div
         className="pointer-events-none absolute left-1/2 -translate-x-1/2"
         style={{
           bottom: 2,
-          width: 78 * scale,
-          height: 10 * scale,
+          width: 88 * scale,
+          height: 12 * scale,
           borderRadius: '50%',
           background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 70%)',
+          zIndex: 0,
         }}
       />
 
-      {/* === AI 生成的 3D 鸡图 === */}
+      {/* 选中时：地面金色暖光（呼应上方光环） */}
+      {selected && !caught && !flyUp && (
+        <motion.div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+          style={{
+            bottom: -2,
+            width: w * 1.05,
+            height: 18 * scale,
+            borderRadius: '50%',
+            background:
+              'radial-gradient(ellipse, rgba(255,215,120,0.42) 0%, rgba(255,200,80,0.15) 50%, transparent 85%)',
+            zIndex: 1,
+          }}
+          animate={{ opacity: [0.55, 0.95, 0.55] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+
+      {/* === 鸡本体：按编号加载独立的 PNG === */}
       <img
-        src={CHICKEN_POSE}
+        src={getChickenSrc(number)}
         alt={`老${CN_NUM[number]}号小鸡`}
         draggable={false}
         style={{
+          position: 'relative',
+          zIndex: 2,
           width: w,
           height: h,
           objectFit: 'contain',
           display: 'block',
-          filter: `hue-rotate(${hueShift}deg) saturate(${1 + Math.abs(hueShift) * 0.008})`,
           userSelect: 'none',
           pointerEvents: 'none',
+          filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.3))',
         }}
       />
 
-      {/* === 胸前 / 腹部的金色编号徽章 === */}
+      {/* === 胸前金色编号徽章 === */}
       <div
         className="pointer-events-none absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
         style={{
-          bottom: h * 0.12,
+          bottom: h * 0.08,
           width: tagSize,
           height: tagSize,
           borderRadius: '50%',
@@ -115,7 +270,8 @@ function ChickenFigure({
             'radial-gradient(ellipse 60% 60% at 40% 35%, #fff5c0 0%, #f5c540 55%, #a87018 100%)',
           border: '2px solid #5a3010',
           boxShadow:
-            '0 2px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(90,50,10,0.4)',
+            '0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(90,50,10,0.4)',
+          zIndex: 4,
         }}
       >
         <span
@@ -131,175 +287,407 @@ function ChickenFigure({
           {CN_NUM[number]}
         </span>
       </div>
-
-
-      {/* 选中时地面金光 */}
-      {selected && !caught && !flyUp && (
-        <motion.div
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2"
-          style={{
-            bottom: -2,
-            width: w,
-            height: 18 * scale,
-            borderRadius: '50%',
-            background:
-              'radial-gradient(ellipse, rgba(240,202,80,0.7) 0%, rgba(240,202,80,0.22) 50%, transparent 80%)',
-          }}
-          animate={{ opacity: [0.6, 1, 0.6] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      )}
     </motion.button>
   );
 }
 
 /** ============================================================
- *  木质鸟笼 SVG —— 取代大手，从天而降扣住小鸡
- *  - 顶部圆弧 + 提钩
- *  - 8 根竖向木条（暗木 + 金属箍）
- *  - 圆形木质底盘
- *  - "落下"是一段直线下降；"拍合"瞬间是 squash + 烟尘 + 震屏
+ *  Pixar 3D 风格的大手（绿袖子 + 金色袖口）—— 从天而降抓鸡脖子
+ *  - descend：张开手掌垂直下落到鸡脖子高度（hand-open.png）
+ *  - grip：切换为握拳（hand-fist.png），紧扣脖子 + 快速 squash + 微微下压
+ *  - lift：握拳连鸡一起升起飞出画面（鸡会跟随同步，见 ChickenFigure.flyUp）
+ *
+ *  关键：
+ *  - 手的尺寸和落位全部随 chickenScale 缩放，保持和鸡始终协调
+ *  - 拳头 knuckles（在 PNG 下部 ~80%）正好落在鸡的上 1/3（头颈区域）
  *  ============================================================ */
-function BirdCage({ phase }: { phase: 'hidden' | 'descend' | 'grip' | 'lift' }) {
-  // 笼底比鸡稍宽，确保视觉上"罩住"
-  const cageW = 110;
-  const cageH = 150;
+function HandGrab({
+  phase,
+  scale = 1,
+}: {
+  phase: 'hidden' | 'descend' | 'grip' | 'lift';
+  scale?: number;
+}) {
+  // 基础尺寸假定鸡是 260×260（scale=1）。手略比鸡窄、和鸡差不多高。
+  const handW = 150 * scale;
+  const handH = 215 * scale;
+  const bottomOffset = 80 * scale;
+  const descendEntryY = -720 * scale;
+  const liftExitY = -640 * scale;
+  const gripPushY = 14 * scale;
+  const showOpen = phase === 'descend';
+  const showFist = phase === 'grip' || phase === 'lift';
 
   return (
     <motion.div
       className="pointer-events-none absolute"
       style={{
         left: '50%',
-        bottom: 28,
-        marginLeft: -cageW / 2,
-        width: cageW,
-        height: cageH,
+        bottom: bottomOffset,
+        marginLeft: -handW / 2,
+        width: handW,
+        height: handH,
         zIndex: 30,
-        transformOrigin: 'center bottom',
+        transformOrigin: 'center 75%',
+        filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.55))',
       }}
       initial={false}
       animate={
         phase === 'hidden'
-          ? { y: -520, opacity: 0, scaleY: 1 }
+          ? { y: descendEntryY, opacity: 0 }
           : phase === 'descend'
-            ? { y: 0, opacity: 1, scaleY: 1 }
+            ? { y: 0, opacity: 1, rotate: 2 }
             : phase === 'grip'
-              ? { y: 0, opacity: 1, scaleY: [1, 0.92, 1] }
-              : { y: -440, opacity: 1, scaleY: 1, rotate: -3 }
+              ? {
+                  y: [0, gripPushY, gripPushY * 0.6, gripPushY * 0.5, gripPushY * 0.5],
+                  scale: [1, 0.82, 1.12, 0.96, 1],
+                  rotate: [2, -3, 4, -1, 0],
+                  opacity: 1,
+                }
+              : { y: liftExitY, opacity: 1, rotate: -3 }
       }
       transition={
         phase === 'descend'
-          ? { duration: 0.55, ease: [0.7, 0, 0.55, 1] } // 加速下落
+          ? { duration: 0.55, ease: [0.7, 0, 0.55, 1] }
           : phase === 'grip'
-            ? { duration: 0.35, ease: 'easeOut' } // 拍合
+            ? { duration: 0.45, ease: 'easeOut', times: [0, 0.3, 0.6, 1] }
             : phase === 'lift'
               ? { duration: 0.85, delay: 0.05, ease: [0.4, 0, 0.3, 1] }
               : { duration: 0.2 }
       }
     >
-      <svg viewBox="0 0 110 150" width={cageW} height={cageH} style={{ overflow: 'visible' }}>
-        <defs>
-          <linearGradient id="cage-wood" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7a5028" />
-            <stop offset="55%" stopColor="#4a3018" />
-            <stop offset="100%" stopColor="#1e1208" />
-          </linearGradient>
-          <linearGradient id="cage-bar" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#2a1a0c" />
-            <stop offset="35%" stopColor="#7a5028" />
-            <stop offset="65%" stopColor="#7a5028" />
-            <stop offset="100%" stopColor="#2a1a0c" />
-          </linearGradient>
-          <linearGradient id="cage-gold" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffe88a" />
-            <stop offset="55%" stopColor="#f0c040" />
-            <stop offset="100%" stopColor="#a87018" />
-          </linearGradient>
-        </defs>
-
-        {/* 顶部提钩 */}
-        <path
-          d="M 55 2 L 55 -10 Q 55 -18 47 -18 Q 39 -18 39 -10"
-          stroke="url(#cage-gold)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          fill="none"
-        />
-
-        {/* 顶部圆顶（实心暗木） */}
-        <path
-          d="M 12 28 Q 55 -10 98 28 L 98 34 L 12 34 Z"
-          fill="url(#cage-wood)"
-          stroke="#0a0604"
-          strokeWidth="1.4"
-          strokeLinejoin="round"
-        />
-        {/* 圆顶金线装饰 */}
-        <path
-          d="M 14 30 Q 55 -4 96 30"
-          stroke="url(#cage-gold)"
-          strokeWidth="1.4"
-          fill="none"
-          opacity="0.85"
-        />
-
-        {/* 顶部金属环 */}
-        <rect x="10" y="32" width="90" height="6" rx="2" fill="url(#cage-gold)" stroke="#5a3a18" strokeWidth="0.8" />
-
-        {/* 8 根竖向木条 —— 让中间的鸡能透出来 */}
-        {Array.from({ length: 8 }).map((_, i) => {
-          const x = 14 + i * (82 / 7);
-          return (
-            <rect
-              key={i}
-              x={x - 1.6}
-              y={38}
-              width={3.2}
-              height={88}
-              rx="1.2"
-              fill="url(#cage-bar)"
-              stroke="#0a0604"
-              strokeWidth="0.6"
-            />
-          );
-        })}
-
-        {/* 中部金属横箍（增加结构感） */}
-        <rect x="10" y="78" width="90" height="3" rx="1" fill="url(#cage-gold)" opacity="0.85" />
-
-        {/* 底部金属环 */}
-        <rect x="10" y="124" width="90" height="6" rx="2" fill="url(#cage-gold)" stroke="#5a3a18" strokeWidth="0.8" />
-
-        {/* 底盘（暗木椭圆） */}
-        <ellipse cx="55" cy="138" rx="48" ry="9" fill="url(#cage-wood)" stroke="#0a0604" strokeWidth="1.4" />
-        <ellipse
-          cx="55"
-          cy="135"
-          rx="46"
-          ry="6"
-          fill="none"
-          stroke="url(#cage-gold)"
-          strokeWidth="0.9"
-          opacity="0.7"
-        />
-
-        {/* 笼内暗光（强化"鸡被罩住"的视觉） */}
-        <ellipse cx="55" cy="84" rx="36" ry="42" fill="rgba(0,0,0,0.32)" />
-      </svg>
-
-      {/* 笼罩中心的微光（被抓中的鸡处于惊慌中的氛围光） */}
-      <div
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2"
-        style={{
-          top: 60,
-          width: 60,
-          height: 60,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255,200,120,0.18) 0%, transparent 70%)',
-          mixBlendMode: 'screen',
-        }}
-      />
+      <AnimatePresence>
+        {showOpen && (
+          <motion.img
+            key="open"
+            src={HAND_OPEN}
+            alt="张开的手"
+            draggable={false}
+            className="absolute inset-0"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.08 }}
+          />
+        )}
+        {showFist && (
+          <motion.img
+            key="fist"
+            src={HAND_FIST}
+            alt="握拳"
+            draggable={false}
+            className="absolute inset-0"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+            initial={{ opacity: 0, scale: 0.88 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
+  );
+}
+
+/** ============================================================
+ *  抓鸡瞬间的 VFX 套装 —— 让"咔！抓住了！"的力度感拉满
+ *  所有特效都相对于鸡的 wrapper 居中叠加
+ *  ============================================================ */
+
+/** 手下落时后拖的 4 条动感线（模拟高速掉落） */
+function DescendStreaks({ active }: { active: boolean }) {
+  return (
+    <AnimatePresence>
+      {active && (
+        <div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+          style={{ top: -380, width: 140, height: 380, zIndex: 29 }}
+        >
+          {[0, 1, 2, 3].map((i) => {
+            const x = [20, 50, 90, 120][i];
+            return (
+              <motion.div
+                key={i}
+                className="absolute"
+                style={{
+                  left: x,
+                  top: 0,
+                  width: 3,
+                  height: 110,
+                  background:
+                    'linear-gradient(180deg, transparent 0%, rgba(255,240,200,0.75) 55%, transparent 100%)',
+                  borderRadius: 2,
+                  filter: 'blur(0.5px)',
+                }}
+                initial={{ y: -40, opacity: 0, scaleY: 0.4 }}
+                animate={{ y: 320, opacity: [0, 1, 0], scaleY: 1.2 }}
+                transition={{
+                  duration: 0.38,
+                  delay: 0.02 + i * 0.06,
+                  ease: 'easeIn',
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** 抓到瞬间的白光爆闪（中心 radial，0.35s 内扩散消散） */
+function ImpactFlash({ active, size = 340 }: { active: boolean; size?: number }) {
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div
+          className="pointer-events-none absolute left-1/2 top-1/2"
+          style={{
+            width: size,
+            height: size,
+            marginLeft: -size / 2,
+            marginTop: -size / 2,
+            borderRadius: '50%',
+            background:
+              'radial-gradient(circle, rgba(255,255,230,1) 0%, rgba(255,230,120,0.7) 22%, rgba(255,200,80,0.3) 45%, transparent 72%)',
+            zIndex: 27,
+            mixBlendMode: 'screen',
+          }}
+          initial={{ scale: 0.15, opacity: 0 }}
+          animate={{ scale: [0.15, 1.1, 1.4], opacity: [0, 1, 0] }}
+          transition={{ duration: 0.35, times: [0, 0.25, 1], ease: 'easeOut' }}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** 3 圈扩散的金色冲击波环 */
+function ShockRings({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <>
+      {[0, 0.08, 0.18].map((delay, i) => (
+        <motion.div
+          key={i}
+          className="pointer-events-none absolute left-1/2 top-1/2"
+          style={{
+            width: 80,
+            height: 80,
+            marginLeft: -40,
+            marginTop: -40,
+            borderRadius: '50%',
+            border: `${3 - i * 0.5}px solid rgba(255,220,100,${0.9 - i * 0.15})`,
+            zIndex: 27,
+            boxShadow: '0 0 20px rgba(255,220,100,0.6)',
+          }}
+          initial={{ scale: 0.3, opacity: 0 }}
+          animate={{ scale: 4.2, opacity: [0, 1, 0] }}
+          transition={{ duration: 0.6, delay, times: [0, 0.25, 1], ease: 'easeOut' }}
+        />
+      ))}
+    </>
+  );
+}
+
+/** 10 片羽毛四散飞出 */
+function FeatherBurst({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2 top-1/2"
+      style={{ zIndex: 28, width: 0, height: 0 }}
+    >
+      {Array.from({ length: 12 }).map((_, i) => {
+        const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.3;
+        const dist = 70 + Math.random() * 60;
+        const size = 10 + Math.random() * 8;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist * 0.75 - 20;
+        const spin = Math.random() * 720 - 360;
+        const dur = 0.6 + Math.random() * 0.35;
+        return (
+          <motion.div
+            key={i}
+            className="absolute"
+            style={{
+              left: -size / 2,
+              top: -size,
+              width: size,
+              height: size * 1.6,
+              background:
+                'linear-gradient(180deg, #ffffff 0%, #fff4e8 70%, #e8d8c4 100%)',
+              borderRadius: '50% 50% 30% 70%',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+              transformOrigin: 'center top',
+            }}
+            initial={{ x: 0, y: 0, rotate: 0, opacity: 1, scale: 0.4 }}
+            animate={{
+              x: [0, dx * 0.55, dx],
+              y: [0, dy * 0.35, dy + 40],
+              rotate: spin,
+              opacity: [1, 1, 0],
+              scale: [0.4, 1.1, 0.8],
+            }}
+            transition={{ duration: dur, ease: 'easeOut' }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** 漫画式"抓!"大字从中心弹出 */
+function ComicText({ active, text }: { active: boolean; text: string }) {
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div
+          className="pointer-events-none absolute left-1/2 top-1/2"
+          style={{
+            marginLeft: -80,
+            marginTop: -40,
+            width: 160,
+            height: 80,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 35,
+          }}
+          initial={{ scale: 0, rotate: -18, opacity: 0 }}
+          animate={{
+            scale: [0, 1.4, 1.15, 1.2],
+            rotate: [-18, 8, -4, 0],
+            opacity: [0, 1, 1, 0],
+            y: [0, -6, -12, -22],
+          }}
+          transition={{
+            duration: 0.95,
+            times: [0, 0.22, 0.5, 1],
+            ease: 'backOut',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "'Noto Serif SC', serif",
+              fontWeight: 900,
+              fontSize: 62,
+              color: '#ffd868',
+              WebkitTextStroke: '3px #3a1a06',
+              textShadow:
+                '4px 5px 0 #3a1a06, 0 0 24px rgba(255,216,104,0.85), 0 0 40px rgba(255,180,60,0.6)',
+              letterSpacing: '0.05em',
+              transform: 'skewX(-6deg)',
+              display: 'inline-block',
+            }}
+          >
+            {text}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** 被抓鸡头上转圈的"晕眩小星星" —— 3 颗星绕圈飞 */
+function DazeStars({ active }: { active: boolean }) {
+  if (!active) return null;
+  const radius = 26;
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2"
+      style={{
+        top: '18%',
+        marginLeft: -radius,
+        width: radius * 2,
+        height: radius * 2,
+        zIndex: 29,
+      }}
+    >
+      <motion.div
+        className="absolute inset-0"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+      >
+        {[0, 120, 240].map((startAng, i) => (
+          <div
+            key={i}
+            className="absolute"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: 14,
+              height: 14,
+              marginLeft: -7,
+              marginTop: -7,
+              transform: `rotate(${startAng}deg) translateY(-${radius}px)`,
+              color: '#ffd868',
+              fontSize: 16,
+              fontWeight: 900,
+              lineHeight: '14px',
+              textAlign: 'center',
+              textShadow: '0 0 6px rgba(255,216,104,0.9), 0 0 12px rgba(255,180,60,0.5)',
+            }}
+          >
+            ★
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+/** 手上提时的拖影（从鸡位置向上 3 条光带） */
+function LiftTrails({ active }: { active: boolean }) {
+  return (
+    <AnimatePresence>
+      {active && (
+        <div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+          style={{ top: -300, width: 120, height: 340, zIndex: 26 }}
+        >
+          {[0, 1, 2].map((i) => {
+            const x = [30, 60, 90][i];
+            return (
+              <motion.div
+                key={i}
+                className="absolute"
+                style={{
+                  left: x,
+                  bottom: 0,
+                  width: 4,
+                  height: 180,
+                  background:
+                    'linear-gradient(0deg, transparent 0%, rgba(255,220,100,0.55) 50%, transparent 100%)',
+                  borderRadius: 2,
+                  filter: 'blur(1px)',
+                }}
+                initial={{ y: 40, opacity: 0, scaleY: 0.4 }}
+                animate={{ y: -220, opacity: [0, 1, 0], scaleY: 1.3 }}
+                transition={{
+                  duration: 0.7,
+                  delay: 0.05 + i * 0.08,
+                  ease: 'easeOut',
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -331,42 +719,6 @@ function DustPuff({ show }: { show: boolean }) {
   );
 }
 
-/**
- * 选中聚光（金色光柱）
- * - 底层用 linear-gradient（顶部 0 透明 → 中段微亮 → 底部 0）保证「上中下」均无硬边
- * - 用 radial mask-image 把光柱左右也羽化，整体像一束自然落下的灯光
- * - 加 8px blur 让边缘更软
- */
-function Spotlight({ targetX, on }: { targetX: number | null; on: boolean }) {
-  if (!on || targetX === null) return null;
-  return (
-    <motion.div
-      className="pointer-events-none absolute"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      style={{ top: 0, bottom: 0, left: targetX, width: 0 }}
-    >
-      <div
-        className="absolute"
-        style={{
-          left: -120,
-          top: 0,
-          width: 240,
-          height: '100%',
-          background:
-            'linear-gradient(180deg, rgba(255,235,170,0) 0%, rgba(255,235,170,0.18) 38%, rgba(255,210,120,0.10) 72%, rgba(255,200,90,0) 100%)',
-          WebkitMaskImage:
-            'radial-gradient(ellipse 55% 90% at 50% 55%, #000 0%, rgba(0,0,0,0.7) 60%, transparent 100%)',
-          maskImage:
-            'radial-gradient(ellipse 55% 90% at 50% 55%, #000 0%, rgba(0,0,0,0.7) 60%, transparent 100%)',
-          filter: 'blur(8px)',
-        }}
-      />
-    </motion.div>
-  );
-}
-
 /** 主屏 */
 type GrabPhase = 'hidden' | 'descend' | 'grip' | 'lift';
 
@@ -383,12 +735,10 @@ export default function ChickenCatchScreen() {
   const [grabPhase, setGrabPhase] = useState<GrabPhase>('hidden');
   const [showDust, setShowDust] = useState(false);
   const [flyUp, setFlyUp] = useState(false);
-  const [spotX, setSpotX] = useState<number | null>(null);
   const [shake, setShake] = useState(false);
 
   const titleRef = useRef<HTMLHeadingElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const chickenRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [stageW, setStageW] = useState(0);
 
   useEffect(() => {
@@ -420,38 +770,33 @@ export default function ChickenCatchScreen() {
   }, []);
 
   const handlePick = (n: number) => {
-    // 已经按下"抓它"进入抓取动画后才锁定，否则一直允许切换
     if (confirmed) return;
-    if (n === selected) return; // 点同一只无效，避免抖动
-    playSound('select');
+    if (n === selected) return;
+    // 选中一只鸡 → 播一声真实感的 "咯~" 鸡叫（共振峰 + 颤音合成）
+    playSound('cluck');
     setSelected(n);
-    requestAnimationFrame(() => {
-      const stage = stageRef.current;
-      const chicken = chickenRefs.current[n];
-      if (!stage || !chicken) return;
-      const stageBox = stage.getBoundingClientRect();
-      const chBox = chicken.getBoundingClientRect();
-      setSpotX(chBox.left + chBox.width / 2 - stageBox.left);
-    });
   };
 
   const handleConfirm = () => {
     if (selected === null || confirmed) return;
     setConfirmed(true);
     playSound('confirm');
-    // 0 → 550ms：鸟笼加速下落 + whoosh
+    // 0 → 550ms：大手张开加速下落 + whoosh
     setGrabPhase('descend');
     setTimeout(() => playSound('whoosh'), 80);
-    // 550ms：拍合 + 烟尘 + 整个舞台震屏 + thud + cluck
+    // 550ms：握拳 + 烟尘 + 震屏 + thud + 鸡惊叫 "squawk!"
     setTimeout(() => {
       setGrabPhase('grip');
       setShowDust(true);
       setShake(true);
       playSound('thud');
-      setTimeout(() => playSound('cluck'), 120);
+      // 鸡被抓住瞬间发出惊叫
+      setTimeout(() => playSound('squawk'), 90);
+      // 紧接着再来一声短促挣扎 cluck
+      setTimeout(() => playSound('cluck'), 520);
       setTimeout(() => setShake(false), 380);
     }, 550);
-    // 550 + 850 = 1400ms：鸟笼连鸡一起被吊起 + 上提 whoosh
+    // 1400ms：握拳提起带鸡飞出画面
     setTimeout(() => {
       setFlyUp(true);
       setGrabPhase('lift');
@@ -463,47 +808,46 @@ export default function ChickenCatchScreen() {
     }, 2300);
   };
 
-  // 用真实测量的舞台宽度计算缩放：保证所有鸡 + 间隙加起来恰好放下，最大 1.0
-  const baseChickenW = 96;
-  const baseGap = numbers.length >= 7 ? 0 : numbers.length >= 5 ? 4 : 8;
-  const stagePadding = 32; // 左右各 16px 缓冲
+  // 多于 3 只自动换两排（4→2+2，5→3+2，6→3+3，7→4+3），让每只鸡保持较大尺寸
+  const chickenRowCount = numbers.length > 3 ? 2 : 1;
+  const perRow = Math.ceil(numbers.length / chickenRowCount);
+  const rows: number[][] = [];
+  for (let i = 0; i < numbers.length; i += perRow) {
+    rows.push(numbers.slice(i, i + perRow));
+  }
+  const maxRowLen = Math.max(...rows.map((r) => r.length));
+
+  // 缩放按「最宽一排」宽度约束 + 纵向空间预算两路约束，取较小者
+  const baseChickenW = 260;
+  const baseGap = maxRowLen >= 4 ? 4 : maxRowLen >= 3 ? 8 : 14;
+  const stagePadding = 16;
   const usable = Math.max(0, stageW - stagePadding);
-  const totalNeeded = numbers.length * baseChickenW + (numbers.length - 1) * baseGap;
-  const chickenScale = stageW > 0 && totalNeeded > usable ? usable / totalNeeded : 1;
+  const totalNeeded = maxRowLen * baseChickenW + (maxRowLen - 1) * baseGap;
+  const scaleByW = stageW > 0 && totalNeeded > usable ? usable / totalNeeded : 1;
+  // 纵向约束：最多 45% dvh 给鸡群，防止两排鸡挤掉下方按钮
+  const budgetH =
+    typeof window !== 'undefined' ? window.innerHeight * 0.45 : 380;
+  const verticalNeeded = rows.length * baseChickenW + (rows.length - 1) * 6;
+  const scaleByH = verticalNeeded > budgetH ? budgetH / verticalNeeded : 1;
+  const chickenScale = Math.min(scaleByW, scaleByH);
   const chickenGap = baseGap * chickenScale;
+  const baseRowGap = 4;
+  const rowGap = baseRowGap * chickenScale;
 
   return (
     <div
       className="relative flex h-dvh flex-col overflow-hidden"
       style={{
-        // 与桌布同色系：木框暖棕 + 草地深绿过渡
+        // 稻田清晨氛围：暖色晨光从上方洒下，中段草绿，底部稍暗
         background: `
-          radial-gradient(ellipse 80% 50% at 50% 18%, rgba(255,225,140,0.10) 0%, transparent 70%),
-          radial-gradient(ellipse 60% 40% at 50% 100%, rgba(0,0,0,0.45) 0%, transparent 60%),
-          linear-gradient(180deg, #3a2818 0%, #2a4028 35%, #1d4a2a 60%, #11381f 100%)
+          radial-gradient(ellipse 90% 45% at 50% -5%, rgba(255,200,120,0.16) 0%, transparent 65%),
+          radial-gradient(ellipse 70% 35% at 50% 105%, rgba(0,0,0,0.35) 0%, transparent 65%),
+          linear-gradient(180deg, #0d1d14 0%, #122818 35%, #0f2214 70%, #0a1810 100%)
         `,
       }}
     >
-      {/* 顶部金色光晕 */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2"
-        style={{
-          width: '85%',
-          height: '40%',
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,225,140,0.12) 0%, transparent 75%)',
-        }}
-      />
-
-      {/* 暗角 */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          boxShadow: 'inset 0 0 180px 50px rgba(0,0,0,0.55)',
-        }}
-      />
-
       {/* 顶栏 */}
-      <div className="relative z-10 flex items-center justify-between px-5 pt-5">
+      <div className="relative z-10 flex items-center justify-between pl-5 pr-14 pt-5 sm:pr-5">
         <button
           onClick={() => {
             playSound('back');
@@ -565,90 +909,66 @@ export default function ChickenCatchScreen() {
         </p>
       </div>
 
-      {/* 舞台 —— 直接用游戏桌布图作背景，与牌桌完全同款木框 + 足球场 */}
-      <div className="relative z-10 mt-auto flex flex-col items-center px-5">
+      {/* 舞台 —— 无独立背景，仅作为鸡群容器（保留 shake 抖动） */}
+      <div className="relative z-10 mt-auto mb-4 flex flex-col items-center px-5 sm:mb-8">
         <motion.div
           ref={stageRef}
-          className="relative w-full max-w-[480px] overflow-visible rounded-[24px]"
-          style={{
-            aspectRatio: '16 / 9',
-            boxShadow: '0 14px 40px rgba(0,0,0,0.6)',
-          }}
+          className="relative w-full max-w-[720px] overflow-visible py-2"
           animate={shake ? { x: [0, -6, 6, -4, 4, 0], y: [0, 2, -2, 1, 0] } : { x: 0, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
         >
-          {/* 舞台底图：足球场桌布（与游戏桌完全同款） */}
+          {/* 鸡群：>4 只自动换两排，每排居中 */}
           <div
-            className="absolute inset-0 overflow-hidden rounded-[24px]"
-            style={{
-              backgroundImage: `url(${TABLE_LANDSCAPE})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              boxShadow: 'inset 0 0 60px rgba(0,0,0,0.32)',
-            }}
-          />
-          {/* 顶部聚光 */}
-          <Spotlight targetX={spotX} on={selected !== null && !flyUp} />
-
-          {/* 地面金线 */}
-          <div
-            className="pointer-events-none absolute inset-x-6"
-            style={{
-              bottom: 26,
-              height: 1,
-              background: 'linear-gradient(90deg, transparent, rgba(240,202,80,0.45), transparent)',
-            }}
-          />
-
-          {/* 鸡群（自适应缩放，溢出舞台时不被裁切） */}
-          <div
-            className="absolute inset-x-0 flex items-end justify-center px-3"
-            style={{ bottom: 16, gap: chickenGap }}
+            className="flex flex-col items-center"
+            style={{ gap: rowGap }}
           >
-            {numbers.map((n) => {
-              const isSelected = selected === n;
-              const isCaught = isSelected && (grabPhase === 'grip' || grabPhase === 'lift');
-              const dimmed = selected !== null && !isSelected;
-              return (
-                <div
-                  key={n}
-                  ref={(el) => {
-                    chickenRefs.current[n] = el;
-                  }}
-                  className="relative"
-                >
-                  <ChickenFigure
-                    number={n}
-                    selected={isSelected}
-                    caught={isCaught}
-                    pickable={!confirmed}
-                    onPick={() => handlePick(n)}
-                    dimmed={dimmed}
-                    flyUp={isSelected && flyUp}
-                    scale={chickenScale}
-                  />
-                  {isSelected && (
-                    <>
-                      <BirdCage phase={grabPhase} />
-                      <DustPuff show={showDust && grabPhase === 'grip'} />
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 铭牌（半透明融入桌布） */}
-          <div
-            className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded px-3 py-0.5 text-[9px] tracking-[0.3em]"
-            style={{
-              bottom: 6,
-              color: 'rgba(240,202,80,0.55)',
-              background: 'rgba(0,0,0,0.3)',
-              border: '1px solid rgba(240,202,80,0.18)',
-            }}
-          >
-            JOSON · CHICKEN STAGE
+            {rows.map((row, rIdx) => (
+              <div
+                key={rIdx}
+                className="flex items-end justify-center"
+                style={{ gap: chickenGap }}
+              >
+                {row.map((n) => {
+                  const isSelected = selected === n;
+                  const isCaught =
+                    isSelected && (grabPhase === 'grip' || grabPhase === 'lift');
+                  const dimmed = selected !== null && !isSelected;
+                  return (
+                    <div key={n} className="relative">
+                      <ChickenFigure
+                        number={n}
+                        selected={isSelected}
+                        caught={isCaught}
+                        pickable={!confirmed}
+                        onPick={() => handlePick(n)}
+                        dimmed={dimmed}
+                        flyUp={isSelected && flyUp}
+                        scale={chickenScale}
+                      />
+                      {isSelected && (
+                        <>
+                          {/* 手下落时的动感线 */}
+                          <DescendStreaks active={grabPhase === 'descend'} />
+                          {/* 手本体（带下落 / 握拳 / 提起三阶段，随鸡 scale 一起缩放保持比例） */}
+                          <HandGrab phase={grabPhase} scale={chickenScale} />
+                          {/* 握拳瞬间爆发的 VFX 群组 */}
+                          <ImpactFlash active={grabPhase === 'grip'} />
+                          <ShockRings active={grabPhase === 'grip'} />
+                          <FeatherBurst active={grabPhase === 'grip'} />
+                          <ComicText active={grabPhase === 'grip'} text="抓!" />
+                          {/* 被抓鸡头顶的晕星（只在 grip 阶段，避免 lift 时星星留在原位脱节） */}
+                          <DazeStars active={grabPhase === 'grip'} />
+                          {/* 提起时的上升拖影 */}
+                          <LiftTrails active={grabPhase === 'lift'} />
+                          {/* 地面烟尘（原有） */}
+                          <DustPuff show={showDust && grabPhase === 'grip'} />
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </motion.div>
       </div>

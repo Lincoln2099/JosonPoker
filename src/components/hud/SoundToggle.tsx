@@ -23,7 +23,7 @@ export default function SoundToggle({ top = 12, right = 12 }: SoundToggleProps) 
       }}
       aria-label={isMuted ? '开启音效' : '关闭音效'}
       title={isMuted ? '开启音效' : '关闭音效'}
-      className="fixed z-[2000] flex items-center justify-center rounded-full"
+      className="fixed z-[80] flex items-center justify-center rounded-full"
       style={{
         top: `calc(${top}px + env(safe-area-inset-top, 0px))`,
         right,

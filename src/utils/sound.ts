@@ -22,6 +22,7 @@ type SfxName =
   | 'whoosh'
   | 'thud'
   | 'cluck'
+  | 'squawk'
   | 'chime'
   | 'modal';
 
@@ -124,6 +125,9 @@ class SoundManager {
         break;
       case 'cluck':
         this.playCluck(ctx, out, t);
+        break;
+      case 'squawk':
+        this.playSquawk(ctx, out, t);
         break;
       case 'chime':
         this.playChime(ctx, out, t);
@@ -368,11 +372,111 @@ class SoundManager {
     this.playNoise(ctx, out, 0.12, 0.4, 800, t, 'lowpass');
   }
 
+  /**
+   * "鸡声" 合成引擎 —— 用 sawtooth 做声带源，三组共振峰 band-pass 模拟鸡喉咙，
+   * 加低速 LFO 做颤音 + 宽频噪声做呼吸声。可复用给 cluck / squawk / cluck-short。
+   */
+  private chickenVoice(
+    ctx: AudioContext,
+    out: GainNode,
+    startTime: number,
+    duration: number,
+    freqStart: number,
+    freqEnd: number,
+    gain: number,
+    opts: { vibrato?: number; vibratoRate?: number; breath?: number } = {},
+  ) {
+    const { vibrato = 15, vibratoRate = 10 + Math.random() * 8, breath = 0.08 } = opts;
+
+    const saw = ctx.createOscillator();
+    saw.type = 'sawtooth';
+    saw.frequency.setValueAtTime(freqStart, startTime);
+    saw.frequency.exponentialRampToValueAtTime(Math.max(40, freqEnd), startTime + duration);
+
+    // 颤音 LFO（模拟鸡喉咙的抖动）
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = vibratoRate;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = vibrato;
+    lfo.connect(lfoGain).connect(saw.frequency);
+
+    // 三组共振峰 band-pass（对应鸡发声的 F1/F2/F3）
+    const formants: [number, number, number][] = [
+      [620, 4.5, 1.0], // F1 喉音
+      [1800, 5.5, 0.7], // F2 腔音
+      [3200, 7.0, 0.45], // F3 高频锐度
+    ];
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, startTime);
+    env.gain.exponentialRampToValueAtTime(gain, startTime + 0.02);
+    env.gain.setValueAtTime(gain, startTime + duration * 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+    for (const [f, q, g] of formants) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = q;
+      const fg = ctx.createGain();
+      fg.gain.value = g;
+      saw.connect(bp).connect(fg).connect(env);
+    }
+    env.connect(out);
+
+    saw.start(startTime);
+    saw.stop(startTime + duration + 0.05);
+    lfo.start(startTime);
+    lfo.stop(startTime + duration + 0.05);
+
+    // 呼吸噪声叠在声音上（带通 500~2500Hz 模拟喉部湍流）
+    if (breath > 0) {
+      this.playNoise(ctx, out, duration, breath, 1400, startTime, 'bandpass');
+    }
+  }
+
+  /** 短促"咯——"一声（选中小鸡时触发，轻巧友好） */
   private playCluck(ctx: AudioContext, out: GainNode, t: number) {
-    // 鸡叫：短 chirp 再叠 noise
-    this.blip(ctx, out, 600, 0.06, 'sawtooth', 0.22, t, 1100);
-    this.blip(ctx, out, 700, 0.05, 'sawtooth', 0.18, t + 0.08, 1200);
-    this.playNoise(ctx, out, 0.08, 0.12, 1800, t, 'highpass');
+    // 起音"k"：短高频噪声点
+    this.playNoise(ctx, out, 0.015, 0.32, 4200, t, 'highpass');
+    // 主体 "ok" 下滑元音
+    this.chickenVoice(ctx, out, t + 0.012, 0.18, 950, 540, 0.28, { vibrato: 18, breath: 0.09 });
+    // 尾音短 "k" 收口
+    this.playNoise(ctx, out, 0.02, 0.18, 4000, t + 0.18, 'highpass');
+  }
+
+  /** 鸡惊叫 —— 被抓住瞬间 "KEH-KEH-KEH-KEEEEEEH!!" 连叫 */
+  private playSquawk(ctx: AudioContext, out: GainNode, t: number) {
+    // 第 1 声惊叫：从天上急降（突然被吓到）
+    this.playNoise(ctx, out, 0.02, 0.42, 4500, t, 'highpass');
+    this.chickenVoice(ctx, out, t + 0.015, 0.22, 1650, 720, 0.4, {
+      vibrato: 28,
+      vibratoRate: 18,
+      breath: 0.14,
+    });
+
+    // 连续三声短促惊叫 "咕！咕！咕！"
+    const bursts = [
+      { freq: [1400, 700], dt: 0.28 },
+      { freq: [1550, 780], dt: 0.42 },
+      { freq: [1300, 650], dt: 0.56 },
+    ];
+    for (const b of bursts) {
+      this.playNoise(ctx, out, 0.015, 0.3, 4000, t + b.dt, 'highpass');
+      this.chickenVoice(ctx, out, t + b.dt + 0.01, 0.14, b.freq[0], b.freq[1], 0.32, {
+        vibrato: 22,
+        vibratoRate: 20 + Math.random() * 6,
+        breath: 0.11,
+      });
+    }
+
+    // 尾音长嘶 "——！" 从高拉到低，颤音剧烈
+    this.chickenVoice(ctx, out, t + 0.78, 0.42, 1380, 480, 0.32, {
+      vibrato: 36,
+      vibratoRate: 14,
+      breath: 0.14,
+    });
   }
 
   private playChime(ctx: AudioContext, out: GainNode, t: number) {
