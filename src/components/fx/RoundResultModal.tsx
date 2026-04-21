@@ -134,7 +134,7 @@ export default function RoundResultModal({ open, game, onContinue }: RoundResult
             </motion.div>
 
             {/* 排名列表 */}
-            <div className="mx-5 mt-4 max-h-[260px] space-y-1.5 overflow-y-auto pr-1">
+            <div className="mx-5 mt-4 max-h-[340px] space-y-1.5 overflow-y-auto pr-1">
               {sorted.map((r, idx) => {
                 const p = game.players[r.pi]!;
                 const isLoser = r.rank === game.loserRank;
