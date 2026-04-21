@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 /**
- * Chroma-key utility: take the AI-generated chicken PNG that has a
- * "transparent-checkerboard" drawn as actual pixels, detect those
- * near-neutral-grey pixels from the image edges (flood-fill), and
- * write a new PNG with a true alpha channel.
+ * Chroma-key utility: AI 图像模型不会输出 alpha 通道，却把"透明背景"画成了实际的
+ * 黑白棋盘格像素。此脚本把这些棋盘格灰像素抠掉，输出真正 RGBA PNG。
  *
- * Usage: node scripts/key-chicken.mjs <src> <dst>
+ * 实现：
+ * 1. 读 RGB PNG，扩展为 RGBA
+ * 2. 全局扫描每个像素；若满足"严格中性灰"的棋盘格像素特征 → 设 alpha = 0
+ *    （不使用 flood-fill，因为鸡身内部可能有被包围的棋盘格口袋）
+ * 3. 为避免把鸡身上的中性阴影误判，阈值收得很紧（max-min ≤ 4）
+ * 4. 不做边缘羽化，避免残留半透明灰点
+ *
+ * 用法: node scripts/key-chicken.mjs <src> <dst>
  */
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -22,7 +27,6 @@ if (!srcPath || !dstPath) {
 const src = PNG.sync.read(fs.readFileSync(srcPath));
 const { width, height } = src;
 
-// 源是 RGB(no alpha)；我们需要输出 RGBA
 const hasAlpha = src.data.length === width * height * 4;
 const rgba = Buffer.alloc(width * height * 4);
 
@@ -40,86 +44,69 @@ for (let i = 0; i < width * height; i++) {
   }
 }
 
-/** 判断一个像素是否属于"棋盘格背景"。
- * 棋盘格特征：近似中性灰（R≈G≈B），且颜色在 [105, 220] 之间（深灰/浅灰方块）。
+/**
+ * 判断一个像素是否属于棋盘格背景。
+ * 棋盘格特征：严格中性灰 + 值域在棋盘两种灰的范围。
+ * - R/G/B 三通道极差 ≤ 4（严格纯灰，排除任何有色调的阴影）
+ * - 亮度在 [120, 210]（棋盘的深灰 ~128 和浅灰 ~192）
+ * 鸡身的白色（~240+）、棕色翅膀（R>G>B）、红冠（R>>G,B）、黄喙等都不会命中。
  */
 function isCheckerBg(r, g, b) {
-  if (r < 90 || r > 230) return false;
-  // 三通道极差 ≤ 8 视为中性灰
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  if (max - min > 10) return false;
+  if (max - min > 4) return false;
+  if (r < 120 || r > 210) return false;
   return true;
 }
 
-// Flood fill from all edges
-const visited = new Uint8Array(width * height);
-const queue = [];
-
-function pushEdge(x, y) {
-  const idx = y * width + x;
-  if (visited[idx]) return;
-  const r = rgba[idx * 4];
-  const g = rgba[idx * 4 + 1];
-  const b = rgba[idx * 4 + 2];
+// 全局扫描：每个像素独立判断（不依赖连通性）
+let killed = 0;
+for (let i = 0; i < width * height; i++) {
+  const r = rgba[i * 4];
+  const g = rgba[i * 4 + 1];
+  const b = rgba[i * 4 + 2];
   if (isCheckerBg(r, g, b)) {
-    queue.push(idx);
-    visited[idx] = 1;
+    rgba[i * 4 + 3] = 0;
+    killed++;
   }
 }
 
-for (let x = 0; x < width; x++) {
-  pushEdge(x, 0);
-  pushEdge(x, height - 1);
-}
-for (let y = 0; y < height; y++) {
-  pushEdge(0, y);
-  pushEdge(width - 1, y);
-}
-
-let head = 0;
-while (head < queue.length) {
-  const idx = queue[head++];
-  const x = idx % width;
-  const y = (idx / width) | 0;
-  rgba[idx * 4 + 3] = 0; // set fully transparent
-  const neigh = [];
-  if (x > 0) neigh.push(idx - 1);
-  if (x < width - 1) neigh.push(idx + 1);
-  if (y > 0) neigh.push(idx - width);
-  if (y < height - 1) neigh.push(idx + width);
-  for (const ni of neigh) {
-    if (visited[ni]) continue;
-    const r = rgba[ni * 4];
-    const g = rgba[ni * 4 + 1];
-    const b = rgba[ni * 4 + 2];
-    if (isCheckerBg(r, g, b)) {
-      queue.push(ni);
-      visited[ni] = 1;
-    }
-  }
-}
-
-// Soft-edge feathering: any pixel adjacent to a transparent one and still
-// close to the neutral-grey threshold → fade alpha to half/quarter.
-for (let y = 0; y < height; y++) {
-  for (let x = 0; x < width; x++) {
+/**
+ * 抗锯齿清理：鸡身边缘如果残留零星透明像素（被抠错的杂色点）补回来。
+ * 规则：如果一个透明像素的 8 邻域里有 ≥ 6 个不透明且有颜色的像素，
+ * 说明它是鸡身内部误抠，恢复为不透明。
+ */
+for (let y = 1; y < height - 1; y++) {
+  for (let x = 1; x < width - 1; x++) {
     const idx = y * width + x;
-    if (rgba[idx * 4 + 3] !== 255) continue;
-    const r = rgba[idx * 4];
-    const g = rgba[idx * 4 + 1];
-    const b = rgba[idx * 4 + 2];
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const neutralish = max - min <= 18 && r >= 90 && r <= 230;
-    if (!neutralish) continue;
-    // 检查是否与已透明像素相邻
-    const up = y > 0 ? visited[idx - width] : 0;
-    const dn = y < height - 1 ? visited[idx + width] : 0;
-    const lt = x > 0 ? visited[idx - 1] : 0;
-    const rt = x < width - 1 ? visited[idx + 1] : 0;
-    if (up + dn + lt + rt > 0) {
-      rgba[idx * 4 + 3] = 80;
+    if (rgba[idx * 4 + 3] !== 0) continue;
+    let opaqueCount = 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const ni = (y + dy) * width + (x + dx);
+        if (rgba[ni * 4 + 3] !== 0) opaqueCount++;
+      }
+    }
+    if (opaqueCount >= 7) {
+      // 被不透明邻居完全包围，恢复。颜色取邻居平均
+      let sr = 0, sg = 0, sb = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const ni = (y + dy) * width + (x + dx);
+          if (rgba[ni * 4 + 3] !== 0) {
+            sr += rgba[ni * 4];
+            sg += rgba[ni * 4 + 1];
+            sb += rgba[ni * 4 + 2];
+            n++;
+          }
+        }
+      }
+      rgba[idx * 4] = (sr / n) | 0;
+      rgba[idx * 4 + 1] = (sg / n) | 0;
+      rgba[idx * 4 + 2] = (sb / n) | 0;
+      rgba[idx * 4 + 3] = 255;
     }
   }
 }
@@ -127,4 +114,4 @@ for (let y = 0; y < height; y++) {
 const out = new PNG({ width, height, colorType: 6 });
 out.data = rgba;
 fs.writeFileSync(dstPath, PNG.sync.write(out));
-console.log(`✓ wrote ${dstPath} (${width}x${height}, RGBA)`);
+console.log(`✓ wrote ${dstPath} (${width}x${height}, RGBA, killed ${killed} checker px)`);
