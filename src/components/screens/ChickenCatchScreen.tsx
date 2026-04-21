@@ -7,10 +7,11 @@ import { playSound, playBgm, stopBgm } from '../../hooks/useSound';
 const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
 
 /** ============================================================
- *  铜雕风格的鸡 + 木质底座
- *  - 完全静止：站立姿态，仅在选中时有缓慢呼吸
- *  - 单色铜质渐变，去掉所有萌系细节（白眼高光/微笑/弹跳）
- *  - 编号刻在底座上而不是脖子挂牌
+ *  3D 卡通鸡 —— 风格对齐加载启动图
+ *  - 白色丰满身体 + 棕色翅膀 + 黑色尾羽 + 红冠 + 黄喙黄腿
+ *  - 大写汉字编号直接刻在胸前金色徽章上
+ *  - 略微透视、柔光，营造 3D 立体感
+ *  - 选中时缓慢呼吸 + 地面金光
  *  ============================================================ */
 function ChickenFigure({
   number,
@@ -29,33 +30,30 @@ function ChickenFigure({
   dimmed: boolean;
   flyUp: boolean;
 }) {
-  // 不同编号轻微差异化色相（保持都是铜调，避免重复）
-  const hueShift = ((number - 2) * 7) % 30;
-
   return (
     <motion.button
       type="button"
       onClick={pickable ? onPick : undefined}
       className="relative inline-block"
       style={{
-        width: 88,
-        height: 130,
+        width: 96,
+        height: 120,
         background: 'transparent',
         border: 'none',
         padding: 0,
         cursor: pickable ? 'pointer' : 'default',
-        opacity: dimmed ? 0.28 : 1,
-        filter: dimmed ? 'grayscale(0.6) brightness(0.55)' : 'none',
+        opacity: dimmed ? 0.32 : 1,
+        filter: dimmed ? 'grayscale(0.55) brightness(0.6)' : 'none',
         transition: 'opacity .35s ease, filter .35s ease',
       }}
       animate={
         flyUp
-          ? { y: -440, scale: 0.55, rotate: -3, opacity: 0 }
+          ? { y: -380, scale: 0.55, rotate: -10, opacity: 0 }
           : caught
-            ? { x: [0, -2, 2, -1.5, 0], y: [0, 1, 0], scale: 0.96 } // 被罩住后微微哆嗦
+            ? { x: [0, -2, 2, -1.5, 0], y: [0, 1, 0], scale: 0.96 }
             : selected
-              ? { scale: [1, 1.015, 1] }
-              : { scale: 1 }
+              ? { y: [0, -2, 0] }
+              : { y: [0, -1, 0] }
       }
       transition={
         flyUp
@@ -63,149 +61,205 @@ function ChickenFigure({
           : caught
             ? { duration: 0.45, ease: 'easeOut', repeat: 1, repeatType: 'mirror' }
             : selected
-              ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
-              : { duration: 0.2 }
+              ? { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
+              : { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
       }
-      whileHover={pickable ? { y: -3 } : undefined}
+      whileHover={pickable ? { y: -4 } : undefined}
       whileTap={pickable ? { scale: 0.97 } : undefined}
     >
-      <svg viewBox="0 0 88 130" width="88" height="130" style={{ overflow: 'visible' }}>
+      {/* 地面阴影 */}
+      <div
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+        style={{
+          bottom: 2,
+          width: 70,
+          height: 8,
+          borderRadius: '50%',
+          background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 70%)',
+        }}
+      />
+
+      <svg viewBox="0 0 96 120" width="96" height="120" style={{ overflow: 'visible' }}>
         <defs>
-          <linearGradient id={`bronze-${number}`} x1="0" y1="0" x2="0.4" y2="1">
-            <stop offset="0%" stopColor={`hsl(${30 + hueShift}, 50%, 58%)`} />
-            <stop offset="35%" stopColor={`hsl(${28 + hueShift}, 55%, 42%)`} />
-            <stop offset="70%" stopColor={`hsl(${22 + hueShift}, 60%, 28%)`} />
-            <stop offset="100%" stopColor={`hsl(${18 + hueShift}, 65%, 18%)`} />
-          </linearGradient>
-          <linearGradient id={`bronze-rim-${number}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="rgba(255,220,140,0.6)" />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-          </linearGradient>
-          <linearGradient id={`base-wood-${number}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5a3a1c" />
-            <stop offset="100%" stopColor="#2a1a0c" />
-          </linearGradient>
-          <radialGradient id={`base-top-${number}`} cx="0.5" cy="0.5" r="0.6">
-            <stop offset="0%" stopColor="#3a2412" />
-            <stop offset="100%" stopColor="#1a1008" />
+          {/* 白色羽毛主体 */}
+          <radialGradient id={`chk-body-${number}`} cx="0.4" cy="0.3" r="0.85">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="60%" stopColor="#f5ede0" />
+            <stop offset="100%" stopColor="#c8b89a" />
           </radialGradient>
+          {/* 头部（同色，略亮） */}
+          <radialGradient id={`chk-head-${number}`} cx="0.35" cy="0.3" r="0.8">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="70%" stopColor="#f8f0e4" />
+            <stop offset="100%" stopColor="#d8c8a8" />
+          </radialGradient>
+          {/* 红色鸡冠 + 肉垂 */}
+          <linearGradient id={`chk-comb-${number}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ff5050" />
+            <stop offset="100%" stopColor="#a82020" />
+          </linearGradient>
+          {/* 棕色翅膀 */}
+          <linearGradient id={`chk-wing-${number}`} x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0%" stopColor="#c08050" />
+            <stop offset="60%" stopColor="#8a5028" />
+            <stop offset="100%" stopColor="#5a3018" />
+          </linearGradient>
+          {/* 黑色尾羽 */}
+          <linearGradient id={`chk-tail-${number}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2a1a0a" />
+            <stop offset="100%" stopColor="#1a0a04" />
+          </linearGradient>
+          {/* 金色胸前徽章 */}
+          <radialGradient id={`chk-tag-${number}`} cx="0.4" cy="0.3" r="0.8">
+            <stop offset="0%" stopColor="#fff5c0" />
+            <stop offset="50%" stopColor="#f5c540" />
+            <stop offset="100%" stopColor="#a87018" />
+          </radialGradient>
+          {/* 黄色喙 / 腿 */}
+          <linearGradient id={`chk-yellow-${number}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffc850" />
+            <stop offset="100%" stopColor="#d88018" />
+          </linearGradient>
         </defs>
 
-        {/* === 鸡的剪影身体（铜雕） === */}
-        <g transform="translate(0 -2)">
-          {/* 尾羽（角） */}
-          <path
-            d="M 14 56 L 4 38 L 12 28 L 22 44 Z"
-            fill={`url(#bronze-${number})`}
-            stroke="#1a0e04"
-            strokeWidth="1.2"
-            strokeLinejoin="miter"
-          />
-          {/* 主体（侧面立姿，更圆胖、更立体的雕像感） */}
-          <path
-            d="M 18 70
-               C 14 56 24 40 40 38
-               C 56 36 70 44 72 56
-               C 74 70 68 84 56 88
-               L 24 88
-               C 18 84 18 76 18 70 Z"
-            fill={`url(#bronze-${number})`}
-            stroke="#1a0e04"
-            strokeWidth="1.4"
-          />
-          {/* 翅膀（贴身，无煽动） */}
-          <path
-            d="M 28 60 L 50 56 L 56 72 L 32 78 Z"
-            fill="rgba(0,0,0,0.32)"
-          />
-          {/* 头部（偏大、棱角分明） */}
-          <ellipse
-            cx="60"
-            cy="34"
-            rx="13"
-            ry="14"
-            fill={`url(#bronze-${number})`}
-            stroke="#1a0e04"
-            strokeWidth="1.4"
-          />
-          {/* 鸡冠（锯齿状，硬朗） */}
-          <path
-            d="M 50 22 L 54 12 L 58 22 L 62 10 L 66 22 L 70 14 L 72 24 L 64 28 L 54 28 Z"
-            fill="#8a2a2a"
-            stroke="#1a0e04"
-            strokeWidth="1.2"
-            strokeLinejoin="miter"
-          />
-          {/* 喙（朝右直线，金色） */}
-          <path
-            d="M 73 34 L 84 35 L 73 38 Z"
-            fill="#d4a040"
-            stroke="#1a0e04"
-            strokeWidth="1"
-            strokeLinejoin="miter"
-          />
-          {/* 眼睛（小黑点，无白） */}
-          <circle cx="63" cy="33" r="1.5" fill="#0a0604" />
-          {/* 高光（铜雕反光） */}
-          <path
-            d="M 32 44 C 38 40 50 40 56 44"
-            stroke="rgba(255,220,150,0.35)"
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-          />
-          {/* 腿（短粗金属） */}
-          <rect x="36" y="86" width="3.5" height="8" fill="#b88838" stroke="#1a0e04" strokeWidth="0.8" />
-          <rect x="50" y="86" width="3.5" height="8" fill="#b88838" stroke="#1a0e04" strokeWidth="0.8" />
-        </g>
+        {/* 黑色尾羽（最底层） */}
+        <path
+          d="M 18 60 Q 6 42 8 28 Q 16 32 22 44 Q 24 52 22 60 Z"
+          fill={`url(#chk-tail-${number})`}
+          stroke="#0a0402"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M 16 64 Q 4 56 4 44 Q 12 48 18 58 Z"
+          fill={`url(#chk-tail-${number})`}
+          opacity="0.85"
+          stroke="#0a0402"
+          strokeWidth="1"
+        />
 
-        {/* === 木质底座 === */}
-        <g transform="translate(0 96)">
-          {/* 底座椭圆（侧面厚度） */}
-          <ellipse cx="44" cy="14" rx="34" ry="6" fill={`url(#base-wood-${number})`} stroke="#0a0604" strokeWidth="1.2" />
-          {/* 底座顶面 */}
-          <ellipse cx="44" cy="6" rx="34" ry="6" fill={`url(#base-top-${number})`} stroke="#3a2412" strokeWidth="1.2" />
-          {/* 金边 */}
-          <ellipse
-            cx="44"
-            cy="6"
-            rx="33"
-            ry="5.5"
-            fill="none"
-            stroke={selected ? '#ffd868' : '#7a5018'}
-            strokeWidth="0.9"
-            opacity={selected ? 1 : 0.7}
-          />
-          {/* 编号雕刻 */}
-          <text
-            x="44"
-            y="9"
-            textAnchor="middle"
-            fontSize="9"
-            fontWeight="900"
-            fill={selected ? '#ffd868' : '#a87e34'}
-            fontFamily="'Noto Serif SC', serif"
-            style={{ letterSpacing: '0.12em' }}
-          >
-            老 {CN_NUM[number]}
-          </text>
-        </g>
+        {/* 黄色腿（在身体之前画，被身体盖住一部分形成层次） */}
+        <rect x="38" y="86" width="4" height="11" rx="1.4" fill={`url(#chk-yellow-${number})`} stroke="#5a3010" strokeWidth="0.8" />
+        <rect x="54" y="86" width="4" height="11" rx="1.4" fill={`url(#chk-yellow-${number})`} stroke="#5a3010" strokeWidth="0.8" />
+        <path d="M 36 97 L 40 99 L 44 97 M 40 99 L 40 101" stroke="#d88018" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+        <path d="M 52 97 L 56 99 L 60 97 M 56 99 L 56 101" stroke="#d88018" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+
+        {/* 白色身体 */}
+        <ellipse
+          cx="48"
+          cy="62"
+          rx="28"
+          ry="26"
+          fill={`url(#chk-body-${number})`}
+          stroke="#5a4830"
+          strokeWidth="1.6"
+        />
+        {/* 身体右侧阴影 */}
+        <path
+          d="M 60 50 Q 78 60 70 80 Q 60 86 50 84 Q 70 80 70 64 Q 70 54 60 50 Z"
+          fill="rgba(120,80,40,0.18)"
+        />
+
+        {/* 棕色翅膀 */}
+        <path
+          d="M 36 56 Q 50 50 60 56 Q 64 64 60 74 L 38 76 Q 32 68 36 56 Z"
+          fill={`url(#chk-wing-${number})`}
+          stroke="#3a1a08"
+          strokeWidth="1.4"
+          strokeLinejoin="round"
+        />
+        {/* 翅膀羽毛纹理 */}
+        <path d="M 40 60 Q 48 58 56 60" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+        <path d="M 40 66 Q 48 64 56 66" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+        <path d="M 40 72 Q 48 70 56 72" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+
+        {/* 头部 */}
+        <ellipse
+          cx="68"
+          cy="34"
+          rx="14"
+          ry="14"
+          fill={`url(#chk-head-${number})`}
+          stroke="#5a4830"
+          strokeWidth="1.6"
+        />
+
+        {/* 红色鸡冠（柔软三瓣） */}
+        <path
+          d="M 58 22 Q 60 12 64 18 Q 68 8 72 18 Q 76 10 78 22 Q 76 26 72 26 Q 68 24 64 26 Q 60 26 58 22 Z"
+          fill={`url(#chk-comb-${number})`}
+          stroke="#5a1010"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+
+        {/* 黄色喙 */}
+        <path
+          d="M 80 33 L 90 35 L 80 38 Z"
+          fill={`url(#chk-yellow-${number})`}
+          stroke="#5a3010"
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+
+        {/* 红色肉垂 */}
+        <path
+          d="M 76 42 Q 78 48 74 48 Q 72 45 76 42 Z"
+          fill={`url(#chk-comb-${number})`}
+          stroke="#5a1010"
+          strokeWidth="0.9"
+        />
+
+        {/* 眼睛（黑豆 + 高光） */}
+        <circle cx="71" cy="32" r="2.2" fill="#0a0402" />
+        <circle cx="72" cy="31" r="0.7" fill="#fff" />
+
+        {/* 胸前金色徽章（大写汉字编号） */}
+        <circle
+          cx="48"
+          cy="64"
+          r="14"
+          fill={`url(#chk-tag-${number})`}
+          stroke="#5a3010"
+          strokeWidth="1.4"
+        />
+        <circle
+          cx="48"
+          cy="64"
+          r="11.5"
+          fill="none"
+          stroke="#7a4818"
+          strokeWidth="0.7"
+          opacity="0.6"
+        />
+        <text
+          x="48"
+          y="69.5"
+          textAnchor="middle"
+          fontSize="15"
+          fontWeight="900"
+          fill="#3a1a06"
+          fontFamily="'Noto Serif SC', serif"
+          style={{ filter: 'drop-shadow(0 1px 0 rgba(255,255,255,0.4))' }}
+        >
+          {CN_NUM[number]}
+        </text>
       </svg>
 
-      {/* 选中时底座金光（不进入鸡身、不萌） */}
+      {/* 选中时地面金光 */}
       {selected && !caught && !flyUp && (
         <motion.div
           className="pointer-events-none absolute left-1/2 -translate-x-1/2"
           style={{
-            bottom: 4,
-            width: 88,
+            bottom: -2,
+            width: 96,
             height: 18,
             borderRadius: '50%',
             background:
-              'radial-gradient(ellipse, rgba(240,202,80,0.6) 0%, rgba(240,202,80,0.18) 50%, transparent 80%)',
+              'radial-gradient(ellipse, rgba(240,202,80,0.7) 0%, rgba(240,202,80,0.22) 50%, transparent 80%)',
           }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          animate={{ opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
         />
       )}
     </motion.button>
