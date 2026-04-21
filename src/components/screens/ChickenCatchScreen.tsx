@@ -577,7 +577,7 @@ export default function ChickenCatchScreen() {
           animate={shake ? { x: [0, -6, 6, -4, 4, 0], y: [0, 2, -2, 1, 0] } : { x: 0, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
         >
-          {/* 内层：被 rounded clip 的桌布图层，外层保持 overflow-visible 以容纳鸟笼下落动画 */}
+          {/* 舞台底图：足球场桌布（与游戏桌完全同款） */}
           <div
             className="absolute inset-0 overflow-hidden rounded-[24px]"
             style={{

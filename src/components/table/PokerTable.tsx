@@ -55,9 +55,9 @@ export default function PokerTable({ children }: PokerTableProps) {
           background: '#0a1810',
         }}
       >
-        {size.w > 0 && size.h > 0 && (
+        {/* 临时隐藏足球场桌布图（TABLE_LANDSCAPE / TABLE_PORTRAIT）以对比效果 */}
+        {false && size.w > 0 && size.h > 0 && (
           isLandscape ? (
-            // 横屏：直接 cover
             <div
               style={{
                 position: 'absolute',
@@ -68,14 +68,13 @@ export default function PokerTable({ children }: PokerTableProps) {
               }}
             />
           ) : (
-            // 竖屏：转置 + rotate(90deg)，使旋转后的视觉宽高 = 容器宽高
             <div
               style={{
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
-                width: size.h, // 旋转后变成视觉高度
-                height: size.w, // 旋转后变成视觉宽度
+                width: size.h,
+                height: size.w,
                 backgroundImage: `url(${TABLE_PORTRAIT})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
