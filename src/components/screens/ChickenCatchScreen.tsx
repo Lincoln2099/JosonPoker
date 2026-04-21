@@ -509,7 +509,7 @@ export default function ChickenCatchScreen() {
 
   return (
     <div
-      className="relative flex min-h-dvh flex-col overflow-hidden"
+      className="relative flex h-dvh flex-col overflow-hidden"
       style={{
         background: `
           radial-gradient(ellipse 80% 50% at 50% 18%, rgba(240,202,80,0.10) 0%, transparent 70%),
@@ -567,8 +567,8 @@ export default function ChickenCatchScreen() {
       </div>
 
       {/* 标题 */}
-      <div className="relative z-10 mt-6 flex flex-col items-center px-5">
-        <div className="mb-3 flex items-center gap-3">
+      <div className="relative z-10 mt-3 flex flex-col items-center px-5 sm:mt-6">
+        <div className="mb-2 flex items-center gap-3 sm:mb-3">
           <div className="h-px w-10" style={{ background: 'linear-gradient(90deg, transparent, rgba(240,202,80,0.5))' }} />
           <span
             className="text-[10px] tracking-[0.4em]"
@@ -584,7 +584,7 @@ export default function ChickenCatchScreen() {
           className="text-center"
           style={{
             fontFamily: "'Noto Serif SC', serif",
-            fontSize: 'clamp(34px, 8vw, 48px)',
+            fontSize: 'clamp(28px, 7vw, 48px)',
             fontWeight: 900,
             color: '#ffd868',
             letterSpacing: '0.08em',
@@ -594,7 +594,7 @@ export default function ChickenCatchScreen() {
           今天抓老几？
         </h1>
 
-        <p className="mt-3 text-center text-[12px]" style={{ color: '#a8a090' }}>
+        <p className="mt-2 text-center text-[11px] sm:mt-3 sm:text-[12px]" style={{ color: '#a8a090' }}>
           点击下方一只小鸡 · 中签者即为本局输家
         </p>
       </div>
@@ -696,7 +696,7 @@ export default function ChickenCatchScreen() {
       </div>
 
       {/* 底部操作 */}
-      <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-10 pt-6">
+      <div className="relative z-10 flex flex-col items-center gap-2 px-6 pb-6 pt-4 sm:gap-3 sm:pb-10 sm:pt-6">
         <AnimatePresence mode="wait">
           {selected === null ? (
             <motion.div

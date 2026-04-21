@@ -78,7 +78,7 @@ export default function MenuScreen() {
   const [hoverStart, setHoverStart] = useState(false);
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center px-5 py-8">
+    <div className="relative flex h-dvh flex-col items-center overflow-hidden px-5 py-4 sm:py-8">
       <BgScene />
 
       <AnimatePresence>
@@ -87,12 +87,12 @@ export default function MenuScreen() {
 
       {/* === Hero / Brand === */}
       <motion.div
-        className="relative z-10 mb-6 mt-auto flex flex-col items-center pt-4"
+        className="relative z-10 mb-3 mt-auto flex flex-col items-center pt-2 sm:mb-6 sm:pt-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
       >
-        <div className="mb-5 flex items-center gap-3">
+        <div className="mb-3 flex items-center gap-3 sm:mb-5">
           <div className="h-px w-10" style={{ background: 'linear-gradient(90deg, transparent, rgba(240,202,80,0.4))' }} />
           <span className="text-[11px] tracking-[0.4em]" style={{ color: 'rgba(240,202,80,0.65)', fontWeight: 500 }}>
             ♠ ♥ ♣ ♦
@@ -104,7 +104,7 @@ export default function MenuScreen() {
           className="text-center leading-[1.05]"
           style={{
             fontFamily: "'Noto Serif SC', serif",
-            fontSize: 'clamp(36px, 8vw, 52px)',
+            fontSize: 'clamp(30px, 7.2vw, 52px)',
             fontWeight: 900,
             color: '#ffd868',
             letterSpacing: '0.08em',
@@ -114,7 +114,7 @@ export default function MenuScreen() {
           分轮倍增赛
         </h1>
 
-        <p className="mt-3 text-center text-[12px] leading-relaxed" style={{ color: '#b0a898', maxWidth: 260 }}>
+        <p className="mt-2 text-center text-[12px] leading-relaxed sm:mt-3" style={{ color: '#b0a898', maxWidth: 260 }}>
           五轮博弈 · 倍率飙升 · 抓老几谁就输
         </p>
 
@@ -153,8 +153,8 @@ export default function MenuScreen() {
         <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(240,202,80,0.35) 50%, transparent 90%)' }} />
 
         {/* 玩家人数 */}
-        <div className="px-5 pt-5 pb-4">
-          <div className="mb-2.5 flex items-center justify-between">
+        <div className="px-5 pt-3 pb-3 sm:pt-5 sm:pb-4">
+          <div className="mb-2 flex items-center justify-between sm:mb-2.5">
             <span className="text-[11px] font-semibold tracking-[0.12em]" style={{ color: '#b0a898' }}>
               玩家人数
             </span>
@@ -192,8 +192,8 @@ export default function MenuScreen() {
         <div className="mx-5 h-px" style={{ background: 'rgba(240,202,80,0.08)' }} />
 
         {/* 底注 */}
-        <div className="px-5 py-4">
-          <div className="mb-2.5 flex items-center justify-between">
+        <div className="px-5 py-3 sm:py-4">
+          <div className="mb-2 flex items-center justify-between sm:mb-2.5">
             <span className="text-[11px] font-semibold tracking-[0.12em]" style={{ color: '#b0a898' }}>
               底注
             </span>
@@ -247,21 +247,18 @@ export default function MenuScreen() {
 
         <div className="mx-5 h-px" style={{ background: 'rgba(240,202,80,0.08)' }} />
 
-        {/* 流程提示 */}
-        <div className="px-5 py-4">
-          <div className="mb-2 text-[11px] font-semibold tracking-[0.12em]" style={{ color: '#b0a898' }}>
-            接下来
-          </div>
+        {/* 流程提示（紧凑版，移动端单行） */}
+        <div className="px-5 py-3 sm:py-4">
           <div
-            className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-[12px]"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-[12px]"
             style={{
               background: 'rgba(255,180,200,0.08)',
               border: '1px solid rgba(255,180,200,0.18)',
               color: '#f6d0d0',
             }}
           >
-            <span style={{ fontSize: 18 }}>🐔</span>
-            <span>下一步选择「抓哪只鸡」决定本局输家名次</span>
+            <span style={{ fontSize: 16 }}>🐔</span>
+            <span>下一步选择「抓哪只鸡」决定输家</span>
           </div>
         </div>
       </motion.div>
@@ -274,11 +271,11 @@ export default function MenuScreen() {
         }}
         onMouseEnter={() => setHoverStart(true)}
         onMouseLeave={() => setHoverStart(false)}
-        className="relative z-10 mt-6 mb-auto overflow-hidden rounded-xl"
+        className="relative z-10 mt-4 mb-auto overflow-hidden rounded-xl sm:mt-6"
         style={{
-          padding: '14px 56px',
+          padding: '12px 48px',
           fontFamily: "'Noto Serif SC', serif",
-          fontSize: 18,
+          fontSize: 17,
           fontWeight: 900,
           letterSpacing: '0.12em',
           color: '#0a1610',
@@ -307,7 +304,7 @@ export default function MenuScreen() {
         <span className="relative">下一步 · 抓鸡</span>
       </motion.button>
 
-      <p className="z-10 mt-4 text-[9px] tracking-widest" style={{ color: '#506050' }}>
+      <p className="z-10 mt-2 text-[9px] tracking-widest sm:mt-4" style={{ color: '#506050' }}>
         JOSON POKER · v1.0
       </p>
     </div>
