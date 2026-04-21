@@ -72,100 +72,91 @@ const IDLE_PATTERNS: Record<number, IdleAnim> = {
   },
 };
 
-/** 每只鸡专属的「胸前数字」主题样式 —— 不再是统一的金色鸡蛋徽章，
- *  而是直接画在身上、颜色和质感呼应那只鸡的设计 */
+/** 每只鸡专属的「号码牌」主题样式 —— 像贴在身上的徽章/铭牌，
+ *  保证黑/灰/复杂花纹的鸡身上数字都清晰，同时质感呼应鸡本身的设计 */
 type NumberStyle = {
   /** 数字字符颜色 */
-  color: string;
-  /** 字符描边颜色（可选，提升对比度） */
-  textStrokeColor?: string;
-  /** 描边粗细（px，scale=1 基准） */
-  textStrokeWidth?: number;
-  /** 字体阴影/光晕，可叠多层 */
-  shadow: string;
-  /** 字号倍数（× base 32px × scale） */
+  charColor: string;
+  /** 字符描边颜色（可选，进一步提升对比） */
+  charStroke?: string;
+  /** 牌子背景（可以是颜色或渐变） */
+  badgeBg: string;
+  /** 牌子边框颜色 */
+  badgeBorder: string;
+  /** 牌子外发光（可叠多层） */
+  badgeGlow: string;
+  /** 字号倍数（× base 28px × scale） */
   fontSize: number;
   /** 数字在鸡身上的纵向位置（0=顶部, 1=底部） */
   posY: number;
-  /** 可选小背景带：(柔和的衬底，让字在花纹/亮色羽毛上还能识别) */
-  band?: {
-    bg: string;
-    border?: string;
-    px: number; // 左右内边距（base × scale）
-    py: number;
-    radius: number;
-  };
 };
 
 const NUMBER_STYLES: Record<number, NumberStyle> = {
-  // 二号 白 Silkie：纯白绒毛上字看不清 → 加深色窄横带 + 白字
+  // 二号 白 Silkie —— 黑色丝带牌子 + 白字 + 金边（像系在脖子的项链牌）
   2: {
-    color: '#fafafa',
-    shadow: '0 1px 2px rgba(0,0,0,0.6)',
-    fontSize: 0.85,
+    charColor: '#fafafa',
+    badgeBg: 'linear-gradient(180deg, #2a2a2a 0%, #0d0d0d 100%)',
+    badgeBorder: 'rgba(240,202,80,0.85)',
+    badgeGlow: '0 2px 5px rgba(0,0,0,0.55), 0 0 0 1px rgba(240,202,80,0.3)',
+    fontSize: 0.95,
     posY: 0.62,
-    band: {
-      bg: 'rgba(28,28,28,0.85)',
-      border: '1px solid rgba(255,255,255,0.35)',
-      px: 8,
-      py: 2,
-      radius: 4,
-    },
   },
-  // 三号 武士：金字 + 黑描边，落在红甲胸部
+  // 三号 武士 —— 金牌钉在红甲（金属底 + 深红边 + 黑字）
   3: {
-    color: '#ffd868',
-    textStrokeColor: '#3a1408',
-    textStrokeWidth: 2.2,
-    shadow: '0 2px 5px rgba(0,0,0,0.75), 0 0 10px rgba(240,202,80,0.5)',
-    fontSize: 1.1,
+    charColor: '#1a0a04',
+    badgeBg: 'linear-gradient(180deg, #ffe88a 0%, #d4a040 50%, #a87018 100%)',
+    badgeBorder: '#5a2010',
+    badgeGlow: '0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.5)',
+    fontSize: 1.0,
     posY: 0.50,
   },
-  // 四号 蒸汽朋克：暗铜字 + 深棕描边，落在金属胸甲
+  // 四号 蒸汽朋克 —— 黄铜钉牌（暗铜底 + 深棕边 + 黑字 + 螺丝感阴影）
   4: {
-    color: '#f0c065',
-    textStrokeColor: '#1a0e04',
-    textStrokeWidth: 1.8,
-    shadow: '0 2px 4px rgba(0,0,0,0.85), 0 0 8px rgba(180,120,40,0.6)',
+    charColor: '#1a0a04',
+    badgeBg: 'linear-gradient(180deg, #e0b060 0%, #a07028 60%, #6a4818 100%)',
+    badgeBorder: '#2a1408',
+    badgeGlow: '0 2px 5px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.4)',
     fontSize: 1.0,
     posY: 0.48,
   },
-  // 五号 星空：发光暖黄字 + 紫色光晕（融入星云）
+  // 五号 星空 —— 暗夜紫黑底 + 银紫边 + 暖黄发光字（融入星云）
   5: {
-    color: '#fff4a0',
-    textStrokeColor: 'rgba(80,40,140,0.7)',
-    textStrokeWidth: 1.5,
-    shadow:
-      '0 0 14px rgba(255,240,150,0.95), 0 0 26px rgba(180,140,255,0.7), 0 2px 3px rgba(0,0,0,0.5)',
-    fontSize: 1.05,
-    posY: 0.55,
+    charColor: '#fff8b0',
+    charStroke: 'rgba(80,40,140,0.6)',
+    badgeBg: 'linear-gradient(180deg, rgba(20,10,55,0.95) 0%, rgba(8,4,30,0.95) 100%)',
+    badgeBorder: 'rgba(180,140,255,0.8)',
+    badgeGlow:
+      '0 0 12px rgba(180,140,255,0.6), 0 0 20px rgba(255,240,150,0.4), 0 2px 5px rgba(0,0,0,0.5)',
+    fontSize: 1.0,
+    posY: 0.56,
   },
-  // 六号 青花瓷：钴蓝字 + 米白描边，呼应蓝白瓷器配色
+  // 六号 青花瓷 —— 釉白底 + 钴蓝边 + 钴蓝字（一眼"青花"）
   6: {
-    color: '#1f4f9e',
-    textStrokeColor: '#f5efe2',
-    textStrokeWidth: 1.6,
-    shadow: '0 1px 2px rgba(255,255,255,0.7), 0 0 5px rgba(31,79,158,0.45)',
+    charColor: '#1f4f9e',
+    badgeBg: 'linear-gradient(180deg, #fefdf4 0%, #f0e8d0 100%)',
+    badgeBorder: '#1f4f9e',
+    badgeGlow: '0 2px 5px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.6)',
     fontSize: 1.0,
     posY: 0.58,
   },
-  // 七号 熔岩：明亮橘黄字 + 深红描边 + 强烈火光晕
+  // 七号 熔岩 —— 烧灼黑底 + 火红边 + 发光橘黄字（像被火炼出的烙印）
   7: {
-    color: '#ffea50',
-    textStrokeColor: '#3a0e00',
-    textStrokeWidth: 2.2,
-    shadow:
-      '0 0 16px rgba(255,140,40,1), 0 0 30px rgba(255,80,0,0.8), 0 2px 4px rgba(0,0,0,0.7)',
-    fontSize: 1.1,
+    charColor: '#ffe050',
+    charStroke: '#3a0e00',
+    badgeBg: 'linear-gradient(180deg, #1a0a04 0%, #2a0a02 100%)',
+    badgeBorder: '#ff6a18',
+    badgeGlow:
+      '0 0 14px rgba(255,140,40,0.85), 0 0 24px rgba(255,80,0,0.55), 0 2px 5px rgba(0,0,0,0.7)',
+    fontSize: 1.0,
     posY: 0.52,
   },
-  // 八号 忍者：白字 + 黑描边（最高对比，黑色羽毛上一眼可辨）
+  // 八号 忍者 —— 黑布带子 + 银白边 + 白字（像缠在身上的忍具）
   8: {
-    color: '#ffffff',
-    textStrokeColor: '#0a0a0a',
-    textStrokeWidth: 2.2,
-    shadow: '0 2px 5px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7)',
-    fontSize: 1.05,
+    charColor: '#ffffff',
+    badgeBg: 'linear-gradient(180deg, #1a1a1c 0%, #050507 100%)',
+    badgeBorder: 'rgba(220,225,235,0.75)',
+    badgeGlow: '0 2px 5px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.18)',
+    fontSize: 1.0,
     posY: 0.55,
   },
 };
@@ -361,35 +352,18 @@ function ChickenFigure({
   );
 }
 
-/** 渲染鸡身上的「老 X 号」数字。读取 NUMBER_STYLES 表，
- *  每只鸡用各自的颜色 / 描边 / 光晕 / 衬底带，融入设计而不是浮在表面。 */
+/** 渲染鸡身上的「号码牌」。每只鸡用 NUMBER_STYLES 里专属的配色 + 边框 + 发光，
+ *  统一用「圆角徽章」结构，保证所有花纹复杂的鸡身上数字都清晰可辨。 */
 function ChickenNumber({ number, scale }: { number: number; scale: number }) {
   const style = NUMBER_STYLES[number] ?? NUMBER_STYLES[2];
-  const fontSize = Math.max(14, 32 * scale * style.fontSize);
-  const strokeWidth = (style.textStrokeWidth ?? 0) * Math.max(0.65, scale);
+  const safeScale = Math.max(0.55, scale);
+  const fontSize = Math.max(14, 28 * safeScale * style.fontSize);
+  const padX = Math.max(7, 11 * safeScale);
+  const padY = Math.max(3, 5 * safeScale);
+  const radius = Math.max(5, 8 * safeScale);
+  const borderWidth = Math.max(1.4, 2 * safeScale);
+  const strokeWidth = style.charStroke ? Math.max(0.8, 1.5 * safeScale) : 0;
 
-  const span = (
-    <span
-      style={{
-        fontFamily: "'Noto Serif SC', 'PingFang SC', serif",
-        fontWeight: 900,
-        fontSize,
-        color: style.color,
-        lineHeight: 1,
-        letterSpacing: '0.04em',
-        WebkitTextStroke: style.textStrokeColor
-          ? `${strokeWidth}px ${style.textStrokeColor}`
-          : undefined,
-        textShadow: style.shadow,
-        display: 'inline-block',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {CN_NUM[number]}
-    </span>
-  );
-
-  // 用一个外层 wrapper 居中，避免被 framer 的 transform 覆盖
   return (
     <div
       className="pointer-events-none absolute left-1/2"
@@ -399,24 +373,37 @@ function ChickenNumber({ number, scale }: { number: number; scale: number }) {
         zIndex: 4,
       }}
     >
-      {style.band ? (
-        <div
+      <div
+        style={{
+          padding: `${padY}px ${padX}px`,
+          borderRadius: radius,
+          background: style.badgeBg,
+          border: `${borderWidth}px solid ${style.badgeBorder}`,
+          boxShadow: style.badgeGlow,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: fontSize * 1.4,
+        }}
+      >
+        <span
           style={{
-            padding: `${style.band.py * scale}px ${style.band.px * scale}px`,
-            borderRadius: style.band.radius * scale,
-            background: style.band.bg,
-            border: style.band.border,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.35)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            fontFamily: "'Noto Serif SC', 'PingFang SC', serif",
+            fontWeight: 900,
+            fontSize,
+            color: style.charColor,
+            lineHeight: 1,
+            letterSpacing: '0.02em',
+            WebkitTextStroke: style.charStroke
+              ? `${strokeWidth}px ${style.charStroke}`
+              : undefined,
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
           }}
         >
-          {span}
-        </div>
-      ) : (
-        span
-      )}
+          {CN_NUM[number]}
+        </span>
+      </div>
     </div>
   );
 }
