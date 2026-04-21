@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { GameState } from '../../game/GameEngine';
 import { MULTS, ROUND_CN } from '../../game/Card';
 import CharacterAvatar from '../avatar/CharacterAvatar';
+import PlayingCard from '../cards/PlayingCard';
 import { playSound } from '../../hooks/useSound';
 
 const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
@@ -178,9 +179,9 @@ export default function RoundResultModal({ open, game, onContinue }: RoundResult
                       ringWidth={1.5}
                       fallbackEmoji={p.emoji}
                     />
-                    <div className="flex flex-1 flex-col">
+                    <div className="flex min-w-0 flex-col">
                       <span
-                        className="text-[13px] font-bold"
+                        className="truncate text-[13px] font-bold"
                         style={{ color: isLoser ? '#5a1a30' : '#3a2820' }}
                       >
                         {p.name}
@@ -197,8 +198,13 @@ export default function RoundResultModal({ open, game, onContinue }: RoundResult
                         {r.ev.name}
                       </span>
                     </div>
+                    <div className="ml-auto flex items-center gap-[3px]">
+                      {r.combo.map((c, ci) => (
+                        <PlayingCard key={ci} card={c} size="xs" />
+                      ))}
+                    </div>
                     <span
-                      className="text-[15px] font-black"
+                      className="w-[40px] shrink-0 text-right text-[15px] font-black"
                       style={{
                         color: r.delta > 0 ? '#3a8c4a' : r.delta < 0 ? '#d8344a' : '#807068',
                         fontFamily: "'Noto Serif SC', serif",

@@ -38,9 +38,13 @@ export default function CommunityCards({ game }: CommunityCardsProps) {
         {comm.map((card, i) => {
           const isCurrent = i === round && round < 4;
           const isLastCard = i === 3;
-          // 新规则：前 3 张（i=0,1,2）始终亮出；第 4 张（决胜底牌）在 round<3 时背面，
-          // round>=3（翻牌后/决胜轮）才亮起。
-          const faceDown = isLastCard && round < 3;
+          // 新规则：前 3 张（i=0,1,2）始终亮出；第 4 张（暗牌）要等玩家在第四轮
+          // 确认出牌后才翻开——即 round<3 时一直背面；round===3 且仍处于 splash
+          // 或 select 阶段时也保持背面；其余（flip-reveal/thinking/result）视为已翻开。
+          const lastCardRevealed =
+            round > 3 ||
+            (round === 3 && phase !== 'round-splash' && phase !== 'select');
+          const faceDown = isLastCard && !lastCardRevealed;
           const dimmed = !isCurrent && !faceDown && i < round;
 
           return (

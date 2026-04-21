@@ -23,9 +23,12 @@ async function playFullGame(page: Page) {
     await cards.nth(0).click();
     await cards.nth(1).click();
     await page.click('button:has-text("确认出牌")');
-    await page.waitForSelector('button:has-text("下一轮")', { timeout: 5_000 });
+    // 第四轮（round===3）确认后先播放暗牌翻牌过场，再进入结算
+    await page.waitForSelector('button:has-text("下一轮")', {
+      timeout: round === 3 ? 12_000 : 5_000,
+    });
     await page.click('button:has-text("下一轮")');
-    await page.waitForTimeout(round === 2 ? 8000 : 3000);
+    await page.waitForTimeout(3000);
   }
   // Round 4 auto-plays, result shows "查看结算" (not "下一轮")
   await page.waitForSelector('button:has-text("查看结算")', { timeout: 15_000 });
@@ -139,10 +142,12 @@ test.describe('游戏流程', () => {
       await cards.nth(0).click();
       await cards.nth(1).click();
       await page.click('button:has-text("确认出牌")');
-      await page.waitForSelector('button:has-text("下一轮")', { timeout: 5_000 });
+      // 第四轮（round===3）确认出牌后播放暗牌翻牌过场，会多花几秒才到结算
+      await page.waitForSelector('button:has-text("下一轮")', {
+        timeout: round === 3 ? 12_000 : 5_000,
+      });
       await page.click('button:has-text("下一轮")');
-      // After round 2, there's flip-reveal (~4s), then dealing + splash (~3s)
-      await page.waitForTimeout(round === 2 ? 8000 : 3000);
+      await page.waitForTimeout(3000);
     }
 
     // Round 4 auto-plays, result shows "查看结算" (not "下一轮")

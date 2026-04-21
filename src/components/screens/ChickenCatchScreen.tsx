@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { useGameStore } from '../../store/useGameStore';
 import { playSound, playBgm, stopBgm } from '../../hooks/useSound';
+import { TABLE_LANDSCAPE } from '../../assets/images';
 
 const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
 
@@ -21,6 +22,7 @@ function ChickenFigure({
   onPick,
   dimmed,
   flyUp,
+  scale = 1,
 }: {
   number: number;
   selected: boolean;
@@ -29,15 +31,19 @@ function ChickenFigure({
   onPick: () => void;
   dimmed: boolean;
   flyUp: boolean;
+  /** 视觉缩放（1 = 96×120）。鸡数量多时自动缩小避免出框。 */
+  scale?: number;
 }) {
+  const w = 96 * scale;
+  const h = 120 * scale;
   return (
     <motion.button
       type="button"
       onClick={pickable ? onPick : undefined}
       className="relative inline-block"
       style={{
-        width: 96,
-        height: 120,
+        width: w,
+        height: h,
         background: 'transparent',
         border: 'none',
         padding: 0,
@@ -72,14 +78,14 @@ function ChickenFigure({
         className="pointer-events-none absolute left-1/2 -translate-x-1/2"
         style={{
           bottom: 2,
-          width: 70,
-          height: 8,
+          width: 70 * scale,
+          height: 8 * scale,
           borderRadius: '50%',
           background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 70%)',
         }}
       />
 
-      <svg viewBox="0 0 96 120" width="96" height="120" style={{ overflow: 'visible' }}>
+      <svg viewBox="0 0 96 120" width={w} height={h} style={{ overflow: 'visible' }}>
         <defs>
           {/* 白色羽毛主体 */}
           <radialGradient id={`chk-body-${number}`} cx="0.4" cy="0.3" r="0.85">
@@ -252,8 +258,8 @@ function ChickenFigure({
           className="pointer-events-none absolute left-1/2 -translate-x-1/2"
           style={{
             bottom: -2,
-            width: 96,
-            height: 18,
+            width: w,
+            height: 18 * scale,
             borderRadius: '50%',
             background:
               'radial-gradient(ellipse, rgba(240,202,80,0.7) 0%, rgba(240,202,80,0.22) 50%, transparent 80%)',
@@ -502,6 +508,7 @@ export default function ChickenCatchScreen() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const chickenRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [stageW, setStageW] = useState(0);
 
   useEffect(() => {
     const el = titleRef.current;
@@ -517,6 +524,18 @@ export default function ChickenCatchScreen() {
     return () => {
       stopBgm();
     };
+  }, []);
+
+  // 监听舞台真实宽度，计算鸡的缩放比例
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (e) setStageW(Math.round(e.contentRect.width));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const handlePick = (n: number) => {
@@ -561,14 +580,24 @@ export default function ChickenCatchScreen() {
     }, 2300);
   };
 
+  // 用真实测量的舞台宽度计算缩放：保证所有鸡 + 间隙加起来恰好放下，最大 1.0
+  const baseChickenW = 96;
+  const baseGap = numbers.length >= 7 ? 0 : numbers.length >= 5 ? 4 : 8;
+  const stagePadding = 32; // 左右各 16px 缓冲
+  const usable = Math.max(0, stageW - stagePadding);
+  const totalNeeded = numbers.length * baseChickenW + (numbers.length - 1) * baseGap;
+  const chickenScale = stageW > 0 && totalNeeded > usable ? usable / totalNeeded : 1;
+  const chickenGap = baseGap * chickenScale;
+
   return (
     <div
       className="relative flex h-dvh flex-col overflow-hidden"
       style={{
+        // 与桌布同色系：木框暖棕 + 草地深绿过渡
         background: `
-          radial-gradient(ellipse 80% 50% at 50% 18%, rgba(240,202,80,0.10) 0%, transparent 70%),
-          radial-gradient(ellipse 60% 40% at 50% 100%, rgba(0,0,0,0.5) 0%, transparent 60%),
-          linear-gradient(180deg, #0a1810 0%, #0e2218 45%, #08140d 100%)
+          radial-gradient(ellipse 80% 50% at 50% 18%, rgba(255,225,140,0.10) 0%, transparent 70%),
+          radial-gradient(ellipse 60% 40% at 50% 100%, rgba(0,0,0,0.45) 0%, transparent 60%),
+          linear-gradient(180deg, #3a2818 0%, #2a4028 35%, #1d4a2a 60%, #11381f 100%)
         `,
       }}
     >
@@ -578,7 +607,7 @@ export default function ChickenCatchScreen() {
         style={{
           width: '85%',
           height: '40%',
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,225,140,0.10) 0%, transparent 75%)',
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,225,140,0.12) 0%, transparent 75%)',
         }}
       />
 
@@ -586,7 +615,7 @@ export default function ChickenCatchScreen() {
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          boxShadow: 'inset 0 0 180px 50px rgba(0,0,0,0.65)',
+          boxShadow: 'inset 0 0 180px 50px rgba(0,0,0,0.55)',
         }}
       />
 
@@ -653,37 +682,28 @@ export default function ChickenCatchScreen() {
         </p>
       </div>
 
-      {/* 舞台 —— 带轻微震屏 */}
+      {/* 舞台 —— 直接用游戏桌布图作背景，与牌桌完全同款木框 + 足球场 */}
       <div className="relative z-10 mt-auto flex flex-col items-center px-5">
         <motion.div
           ref={stageRef}
           className="relative w-full max-w-[480px] overflow-visible rounded-[24px]"
           style={{
-            aspectRatio: '4 / 3',
-            background:
-              'radial-gradient(ellipse 100% 70% at 50% 35%, #267044 0%, #1d5634 55%, #11381f 100%)',
-            border: '6px solid #6b4820',
-            boxShadow:
-              '0 14px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(240,202,80,0.25), inset 0 0 50px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,225,140,0.18)',
+            aspectRatio: '16 / 9',
+            boxShadow: '0 14px 40px rgba(0,0,0,0.6)',
           }}
           animate={shake ? { x: [0, -6, 6, -4, 4, 0], y: [0, 2, -2, 1, 0] } : { x: 0, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
         >
-          {/* 草地横纹 */}
+          {/* 内层：被 rounded clip 的桌布图层，外层保持 overflow-visible 以容纳鸟笼下落动画 */}
           <div
-            className="absolute inset-3 rounded-[18px]"
+            className="absolute inset-0 overflow-hidden rounded-[24px]"
             style={{
-              background: `repeating-linear-gradient(
-                0deg,
-                transparent 0px,
-                transparent 18px,
-                rgba(255,255,255,0.025) 18px,
-                rgba(255,255,255,0.025) 36px
-              )`,
-              border: '1px solid rgba(255,255,255,0.08)',
+              backgroundImage: `url(${TABLE_LANDSCAPE})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              boxShadow: 'inset 0 0 60px rgba(0,0,0,0.32)',
             }}
           />
-
           {/* 顶部聚光 */}
           <Spotlight targetX={spotX} on={selected !== null && !flyUp} />
 
@@ -693,14 +713,14 @@ export default function ChickenCatchScreen() {
             style={{
               bottom: 26,
               height: 1,
-              background: 'linear-gradient(90deg, transparent, rgba(240,202,80,0.4), transparent)',
+              background: 'linear-gradient(90deg, transparent, rgba(240,202,80,0.45), transparent)',
             }}
           />
 
-          {/* 鸡群 */}
+          {/* 鸡群（自适应缩放，溢出舞台时不被裁切） */}
           <div
-            className="absolute inset-x-0 flex items-end justify-center px-4"
-            style={{ bottom: 14, gap: numbers.length > 4 ? 2 : 8 }}
+            className="absolute inset-x-0 flex items-end justify-center px-3"
+            style={{ bottom: 16, gap: chickenGap }}
           >
             {numbers.map((n) => {
               const isSelected = selected === n;
@@ -722,6 +742,7 @@ export default function ChickenCatchScreen() {
                     onPick={() => handlePick(n)}
                     dimmed={dimmed}
                     flyUp={isSelected && flyUp}
+                    scale={chickenScale}
                   />
                   {isSelected && (
                     <>
@@ -734,7 +755,7 @@ export default function ChickenCatchScreen() {
             })}
           </div>
 
-          {/* 铭牌 */}
+          {/* 铭牌（半透明融入桌布） */}
           <div
             className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded px-3 py-0.5 text-[9px] tracking-[0.3em]"
             style={{

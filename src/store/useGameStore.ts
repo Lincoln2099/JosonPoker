@@ -29,6 +29,8 @@ interface GameStore {
 
   toggleCardSelection: (index: number) => void;
   confirmPlay: () => void;
+  /** 第四轮翻暗牌完毕后，继续结算（thinking → result）。 */
+  resolveAfterFlip: () => void;
   closeRoundModal: () => void;
   nextRound: () => void;
   goToGameOver: () => void;
@@ -85,6 +87,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game) return;
     if (game.round < 4 && game.selectedIndices.length !== 2) return;
 
+    // 第四轮（round===3）：玩家先选牌，再翻暗牌——此时进入翻牌过场，
+    // 翻完后由 FlipReveal 回调调用 resolveAfterFlip 继续结算。
+    if (game.round === 3) {
+      set({ game: { ...game, phase: 'flip-reveal' } });
+      return;
+    }
+
     set({ game: { ...game, phase: 'thinking' } });
 
     setTimeout(() => {
@@ -105,6 +114,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }, 600);
   },
 
+  resolveAfterFlip: () => {
+    const game = get().game;
+    if (!game) return;
+
+    set({ game: { ...game, phase: 'thinking' } });
+
+    setTimeout(() => {
+      const g = get().game!;
+      const { state: nextState } = executeRound(g);
+
+      set({
+        game: {
+          ...nextState,
+          phase: 'result',
+        },
+      });
+
+      setTimeout(() => {
+        set({ showRoundModal: true });
+      }, 1100);
+    }, 400);
+  },
+
   closeRoundModal: () => {
     set({ showRoundModal: false });
   },
@@ -115,16 +147,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ showRoundModal: false });
 
-    const isRound3 = game.round === 2;
-
-    if (isRound3) {
-      // 第三轮结束 → 翻底牌过场（FlipReveal 完成回调里再发新一轮的牌）
-      set({ game: { ...game, phase: 'flip-reveal' } });
-      return;
-    }
-
     // 关键：一次性完成「补牌 + 进入下一轮 splash」，不再额外加 dealing 阶段，
     // 避免 CardHand 在 splash 前后各播一次发牌动画。
+    // 第三轮结束后不再翻暗牌——暗牌改由第四轮确认出牌后再翻。
     const dealt = dealNewCards(game);
     const round = dealt.round + 1;
 

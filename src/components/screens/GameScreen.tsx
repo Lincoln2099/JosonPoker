@@ -19,7 +19,6 @@ import FlipReveal from '../fx/FlipReveal';
 import StadiumBg from '../fx/StadiumBg';
 import GameHints from '../hud/GameHints';
 import RoundResultModal from '../fx/RoundResultModal';
-import { dealNewCards } from '../../game/GameEngine';
 import { playSound, playBgm } from '../../hooks/useSound';
 
 function RoundSplash({ round }: { round: number }) {
@@ -255,26 +254,8 @@ export default function GameScreen() {
   }, [phase, autoAdvanceFromSplash]);
 
   const handleFlipRevealComplete = useCallback(() => {
-    const g = useGameStore.getState().game;
-    if (!g) return;
-
-    const dealt = dealNewCards(g);
-    const nextRound = dealt.round + 1;
-
-    if (nextRound > 4) {
-      useGameStore.setState({ screen: 'gameover', game: { ...dealt, round: nextRound } });
-      return;
-    }
-
-    // 直接进入决胜轮 splash，不再走 dealing 中间态（避免 CardHand 多余播一次发牌动画）
-    useGameStore.setState({
-      game: {
-        ...dealt,
-        round: nextRound,
-        phase: 'round-splash',
-        selectedIndices: [],
-      },
-    });
+    // 第四轮确认出牌后触发 FlipReveal，翻完暗牌继续结算。
+    useGameStore.getState().resolveAfterFlip();
   }, []);
 
   const humanResult =
