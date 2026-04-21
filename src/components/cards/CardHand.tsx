@@ -117,7 +117,7 @@ export default function CardHand({ game }: CardHandProps) {
   return (
     <div
       ref={containerRef}
-      className="scrollbar-hide flex justify-center gap-1.5 overflow-visible px-2 pt-8 pb-2"
+      className="scrollbar-hide flex justify-center gap-1.5 overflow-visible px-2 pt-2 pb-1"
     >
       {human.hand.map((card, i) => {
         const selected = game.selectedIndices.includes(i);

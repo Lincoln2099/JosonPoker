@@ -289,7 +289,7 @@ export default function GameScreen() {
   return (
     <div
       ref={gameContainerRef}
-      className={`relative flex min-h-dvh flex-col ${isMobile ? 'pb-[140px]' : ''}`}
+      className={`relative flex h-dvh flex-col overflow-hidden ${isMobile ? 'pb-[198px]' : ''}`}
     >
       <StadiumBg />
       <LandscapeToast />
@@ -325,8 +325,8 @@ export default function GameScreen() {
       <TopBar round={round} loserRank={game.loserRank} np={game.np} />
       <MultiplierBar currentRound={round} />
 
-      {/* Table area */}
-      <div className="flex flex-1 items-center justify-center overflow-visible px-0 py-0">
+      {/* Table area - min-h-0 让 flex 子元素可以压缩；避免被内容撑出 dvh */}
+      <div className="flex flex-1 min-h-0 items-center justify-center overflow-visible px-0 py-0">
         <PokerTable>
           <div className="relative h-full w-full overflow-visible">
             <SeatRing game={game} />
@@ -348,7 +348,7 @@ export default function GameScreen() {
 
       {/* Bottom area — glass container for hand + controls */}
       <div
-        className={`shrink-0 overflow-visible ${isMobile ? 'fixed inset-x-0 bottom-0 z-40 pt-6 pb-[env(safe-area-inset-bottom)]' : ''}`}
+        className={`shrink-0 overflow-visible ${isMobile ? 'fixed inset-x-0 bottom-0 z-40 pt-3 pb-[env(safe-area-inset-bottom)]' : ''}`}
         style={{
           background: isMobile
             ? 'linear-gradient(to top, rgba(6,18,12,0.98) 0%, rgba(8,22,14,0.94) 60%, rgba(10,26,16,0.55) 85%, transparent 100%)'

@@ -14,6 +14,8 @@ export default function PokerTable({ children }: PokerTableProps) {
   const isLandscape = orientation === 'landscape';
 
   const aspectRatio = isLandscape ? '16 / 9' : '9 / 16';
+  // maxWidth / maxHeight 都设成 100% 让父容器 flex 空间说了算，
+  // 同时用 aspect-ratio 保持比例 —— 小屏幕时宽高会同比缩，不会把页面撑出视口。
   const widthClamp = isLandscape ? 'min(94vw, 880px)' : 'min(94vw, 460px)';
 
   return (
@@ -22,7 +24,8 @@ export default function PokerTable({ children }: PokerTableProps) {
       style={{
         aspectRatio,
         width: widthClamp,
-        maxHeight: 'calc(100dvh - 100px)',
+        maxWidth: '100%',
+        maxHeight: '100%',
       }}
     >
       {/* 椭圆灯光聚焦圈 —— 取代原本的矩形桌布，营造自然落下的绿色柔光
