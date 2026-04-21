@@ -72,6 +72,104 @@ const IDLE_PATTERNS: Record<number, IdleAnim> = {
   },
 };
 
+/** 每只鸡专属的「胸前数字」主题样式 —— 不再是统一的金色鸡蛋徽章，
+ *  而是直接画在身上、颜色和质感呼应那只鸡的设计 */
+type NumberStyle = {
+  /** 数字字符颜色 */
+  color: string;
+  /** 字符描边颜色（可选，提升对比度） */
+  textStrokeColor?: string;
+  /** 描边粗细（px，scale=1 基准） */
+  textStrokeWidth?: number;
+  /** 字体阴影/光晕，可叠多层 */
+  shadow: string;
+  /** 字号倍数（× base 32px × scale） */
+  fontSize: number;
+  /** 数字在鸡身上的纵向位置（0=顶部, 1=底部） */
+  posY: number;
+  /** 可选小背景带：(柔和的衬底，让字在花纹/亮色羽毛上还能识别) */
+  band?: {
+    bg: string;
+    border?: string;
+    px: number; // 左右内边距（base × scale）
+    py: number;
+    radius: number;
+  };
+};
+
+const NUMBER_STYLES: Record<number, NumberStyle> = {
+  // 二号 白 Silkie：纯白绒毛上字看不清 → 加深色窄横带 + 白字
+  2: {
+    color: '#fafafa',
+    shadow: '0 1px 2px rgba(0,0,0,0.6)',
+    fontSize: 0.85,
+    posY: 0.62,
+    band: {
+      bg: 'rgba(28,28,28,0.85)',
+      border: '1px solid rgba(255,255,255,0.35)',
+      px: 8,
+      py: 2,
+      radius: 4,
+    },
+  },
+  // 三号 武士：金字 + 黑描边，落在红甲胸部
+  3: {
+    color: '#ffd868',
+    textStrokeColor: '#3a1408',
+    textStrokeWidth: 2.2,
+    shadow: '0 2px 5px rgba(0,0,0,0.75), 0 0 10px rgba(240,202,80,0.5)',
+    fontSize: 1.1,
+    posY: 0.50,
+  },
+  // 四号 蒸汽朋克：暗铜字 + 深棕描边，落在金属胸甲
+  4: {
+    color: '#f0c065',
+    textStrokeColor: '#1a0e04',
+    textStrokeWidth: 1.8,
+    shadow: '0 2px 4px rgba(0,0,0,0.85), 0 0 8px rgba(180,120,40,0.6)',
+    fontSize: 1.0,
+    posY: 0.48,
+  },
+  // 五号 星空：发光暖黄字 + 紫色光晕（融入星云）
+  5: {
+    color: '#fff4a0',
+    textStrokeColor: 'rgba(80,40,140,0.7)',
+    textStrokeWidth: 1.5,
+    shadow:
+      '0 0 14px rgba(255,240,150,0.95), 0 0 26px rgba(180,140,255,0.7), 0 2px 3px rgba(0,0,0,0.5)',
+    fontSize: 1.05,
+    posY: 0.55,
+  },
+  // 六号 青花瓷：钴蓝字 + 米白描边，呼应蓝白瓷器配色
+  6: {
+    color: '#1f4f9e',
+    textStrokeColor: '#f5efe2',
+    textStrokeWidth: 1.6,
+    shadow: '0 1px 2px rgba(255,255,255,0.7), 0 0 5px rgba(31,79,158,0.45)',
+    fontSize: 1.0,
+    posY: 0.58,
+  },
+  // 七号 熔岩：明亮橘黄字 + 深红描边 + 强烈火光晕
+  7: {
+    color: '#ffea50',
+    textStrokeColor: '#3a0e00',
+    textStrokeWidth: 2.2,
+    shadow:
+      '0 0 16px rgba(255,140,40,1), 0 0 30px rgba(255,80,0,0.8), 0 2px 4px rgba(0,0,0,0.7)',
+    fontSize: 1.1,
+    posY: 0.52,
+  },
+  // 八号 忍者：白字 + 黑描边（最高对比，黑色羽毛上一眼可辨）
+  8: {
+    color: '#ffffff',
+    textStrokeColor: '#0a0a0a',
+    textStrokeWidth: 2.2,
+    shadow: '0 2px 5px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7)',
+    fontSize: 1.05,
+    posY: 0.55,
+  },
+};
+
 /** ============================================================
  *  3D 卡通鸡 —— 每个编号一张独立的 Pixar 风格鸡 PNG（白鸡/红公鸡/
  *  金色胖母鸡/银丝鸡/黑白花鸡/彩色公鸡…），与加载图风格一致。
@@ -102,7 +200,6 @@ function ChickenFigure({
   const w = 260 * scale;
   const h = 260 * scale;
   const bobPhase = ((number * 13) % 7) * 0.15; // 0~0.9s 错位，让各只鸡不同步
-  const tagSize = Math.max(24, 34 * scale);
   const idle = IDLE_PATTERNS[number] ?? IDLE_PATTERNS[2];
 
   // 构建 animate 对象时过滤掉 undefined，避免 framer 瞬间重置未定义的 transform
@@ -258,36 +355,69 @@ function ChickenFigure({
         }}
       />
 
-      {/* === 胸前金色编号徽章 === */}
-      <div
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
-        style={{
-          bottom: h * 0.08,
-          width: tagSize,
-          height: tagSize,
-          borderRadius: '50%',
-          background:
-            'radial-gradient(ellipse 60% 60% at 40% 35%, #fff5c0 0%, #f5c540 55%, #a87018 100%)',
-          border: '2px solid #5a3010',
-          boxShadow:
-            '0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(90,50,10,0.4)',
-          zIndex: 4,
-        }}
-      >
-        <span
+      {/* === 胸前主题化数字（每只鸡专属配色/质感，画在身上） === */}
+      <ChickenNumber number={number} scale={scale} />
+    </motion.button>
+  );
+}
+
+/** 渲染鸡身上的「老 X 号」数字。读取 NUMBER_STYLES 表，
+ *  每只鸡用各自的颜色 / 描边 / 光晕 / 衬底带，融入设计而不是浮在表面。 */
+function ChickenNumber({ number, scale }: { number: number; scale: number }) {
+  const style = NUMBER_STYLES[number] ?? NUMBER_STYLES[2];
+  const fontSize = Math.max(14, 32 * scale * style.fontSize);
+  const strokeWidth = (style.textStrokeWidth ?? 0) * Math.max(0.65, scale);
+
+  const span = (
+    <span
+      style={{
+        fontFamily: "'Noto Serif SC', 'PingFang SC', serif",
+        fontWeight: 900,
+        fontSize,
+        color: style.color,
+        lineHeight: 1,
+        letterSpacing: '0.04em',
+        WebkitTextStroke: style.textStrokeColor
+          ? `${strokeWidth}px ${style.textStrokeColor}`
+          : undefined,
+        textShadow: style.shadow,
+        display: 'inline-block',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {CN_NUM[number]}
+    </span>
+  );
+
+  // 用一个外层 wrapper 居中，避免被 framer 的 transform 覆盖
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2"
+      style={{
+        top: `${style.posY * 100}%`,
+        transform: 'translate(-50%, -50%)',
+        zIndex: 4,
+      }}
+    >
+      {style.band ? (
+        <div
           style={{
-            fontFamily: "'Noto Serif SC', serif",
-            fontWeight: 900,
-            fontSize: Math.max(12, tagSize * 0.55),
-            color: '#3a1a06',
-            lineHeight: 1,
-            textShadow: '0 1px 0 rgba(255,255,255,0.5)',
+            padding: `${style.band.py * scale}px ${style.band.px * scale}px`,
+            borderRadius: style.band.radius * scale,
+            background: style.band.bg,
+            border: style.band.border,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.35)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {CN_NUM[number]}
-        </span>
-      </div>
-    </motion.button>
+          {span}
+        </div>
+      ) : (
+        span
+      )}
+    </div>
   );
 }
 
