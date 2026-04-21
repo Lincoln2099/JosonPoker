@@ -26,23 +26,30 @@ export default function HandPreview({ game }: HandPreviewProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 8 }}
+        exit={{ opacity: 0, y: 6 }}
+        transition={{ duration: 0.2 }}
         className="flex items-center justify-center gap-2 py-1"
       >
         <span
-          className="rounded-full px-3 py-0.5 text-sm font-bold"
+          className="inline-flex items-center rounded-md px-3.5 py-1 text-[13px] font-bold"
           style={{
-            background: 'rgba(255,183,197,0.15)',
-            color: 'var(--sakura)',
-            border: '1px solid rgba(255,183,197,0.3)',
+            background: 'var(--surface-el)',
+            color: 'var(--accent-bright)',
+            border: '1px solid rgba(240,202,80,0.2)',
           }}
         >
           {ev.name}
         </span>
+
         {ev.hasJoker && (
-          <span className="text-xs text-[var(--gold)]">含王牌</span>
+          <span
+            className="text-[11px] font-semibold"
+            style={{ color: 'var(--accent)' }}
+          >
+            含王牌
+          </span>
         )}
       </motion.div>
     </AnimatePresence>

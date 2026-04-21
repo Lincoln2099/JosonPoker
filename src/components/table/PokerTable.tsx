@@ -1,180 +1,111 @@
-import { useEffect, useRef, useMemo, type ReactNode } from 'react';
-import { usePerformance } from '../../hooks/usePerformance';
-import gsap from 'gsap';
-
-const PETAL_COUNT = 24;
-
-function SakuraPetals() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { isLowEnd } = usePerformance();
-  const count = isLowEnd ? 10 : PETAL_COUNT;
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const petals: HTMLDivElement[] = [];
-    for (let i = 0; i < count; i++) {
-      const petal = document.createElement('div');
-      petal.className = 'sakura-petal';
-      const size = 6 + Math.random() * 8;
-      const hue = Math.random() > 0.5 ? 0 : 10;
-      petal.style.cssText = `
-        position: absolute;
-        width: ${size}px;
-        height: ${size * 1.4}px;
-        background: linear-gradient(135deg,
-          hsl(${340 + hue}, 80%, 82%),
-          hsl(${345 + hue}, 70%, 75%));
-        border-radius: 50% 0 50% 50%;
-        pointer-events: none;
-        opacity: 0;
-        will-change: transform, opacity;
-      `;
-      container.appendChild(petal);
-      petals.push(petal);
-      animatePetal(petal, true);
-    }
-
-    function animatePetal(el: HTMLElement, first = false) {
-      const startX = Math.random() * (container?.clientWidth ?? 400);
-      const drift = (Math.random() - 0.5) * 160;
-      const h = container?.clientHeight ?? 600;
-      const delay = first ? Math.random() * 6 : 0;
-
-      gsap.set(el, {
-        x: startX,
-        y: first ? Math.random() * h * -0.1 : -20,
-        rotation: Math.random() * 360,
-        opacity: 0,
-      });
-
-      gsap.to(el, {
-        y: h + 30,
-        x: startX + drift + Math.sin(Math.random() * Math.PI * 2) * 60,
-        rotation: `+=${300 + Math.random() * 400}`,
-        opacity: 0.65,
-        duration: 5 + Math.random() * 5,
-        delay,
-        ease: 'none',
-        onUpdate: function () {
-          const progress = this.progress();
-          if (progress > 0.85) {
-            gsap.set(el, { opacity: 0.65 * (1 - (progress - 0.85) / 0.15) });
-          }
-        },
-        onComplete: () => animatePetal(el),
-      });
-    }
-
-    return () => {
-      petals.forEach((p) => {
-        gsap.killTweensOf(p);
-        p.remove();
-      });
-    };
-  }, [count]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-      style={{ borderRadius: 'inherit' }}
-    />
-  );
-}
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useOrientation } from '../../hooks/useOrientation';
+import { TABLE_PORTRAIT, TABLE_LANDSCAPE } from '../../assets/images';
 
 interface PokerTableProps {
   children: ReactNode;
 }
 
+/**
+ * 桌布原图固定为 1376×768 横向（木框 + 足球场 + 樱花 + 奖杯）。
+ * 竖屏时把图整体旋转 90° 充满纵向容器，让足球场长轴自然垂直、球门朝上下。
+ *
+ * 关键实现：用 ResizeObserver 量出容器实际像素尺寸，再用一个"转置后"的子元素
+ * （pre-rotation 宽 = container.height，pre-rotation 高 = container.width）+ rotate(90deg)，
+ * 旋转后视觉宽高与容器精确一致，不会有黑边或越界。
+ */
 export default function PokerTable({ children }: PokerTableProps) {
-  const { isLowEnd } = usePerformance();
+  const orientation = useOrientation();
+  const isLandscape = orientation === 'landscape';
 
-  const diamondPattern = useMemo(() => {
-    const size = 20;
-    return `url("data:image/svg+xml,%3Csvg width='${size}' height='${size}' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M${size / 2} 2L${size - 2} ${size / 2}L${size / 2} ${size - 2}L2 ${size / 2}Z' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3C/svg%3E")`;
+  const aspectRatio = isLandscape ? '16 / 9' : '9 / 16';
+  const widthClamp = isLandscape ? 'min(94vw, 880px)' : 'min(94vw, 460px)';
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (!e) return;
+      const r = e.contentRect;
+      setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   return (
     <div
-      className="relative mx-auto w-full"
+      ref={containerRef}
+      className="relative mx-auto overflow-visible"
       style={{
-        aspectRatio: '3 / 4',
-        maxWidth: 420,
-        maxHeight: 'calc(100dvh - 200px)',
+        aspectRatio,
+        width: widthClamp,
+        maxHeight: 'calc(100dvh - 100px)',
       }}
     >
-      {/* Outer shadow & bevel */}
+      {/* 桌布层 */}
       <div
-        className="absolute inset-0 rounded-[36px]"
+        className="absolute inset-0 overflow-hidden rounded-[28px]"
         style={{
-          boxShadow:
-            '0 8px 48px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.35)',
+          background: '#0a1810',
         }}
-      />
-
-      {/* Grass stripes — vertical for portrait */}
-      <div
-        className="absolute inset-0 overflow-hidden rounded-[36px]"
-        style={{
-          background: `repeating-linear-gradient(
-            0deg,
-            var(--field) 0px,
-            var(--field) 28px,
-            var(--field-light) 28px,
-            var(--field-light) 56px
-          )`,
-        }}
-      />
-
-      {/* Diamond pattern overlay */}
-      <div
-        className="absolute inset-0 rounded-[36px]"
-        style={{
-          backgroundImage: diamondPattern,
-          backgroundSize: '20px 20px',
-          opacity: 0.6,
-        }}
-      />
-
-      {/* Outer border */}
-      <div
-        className="absolute inset-0 rounded-[36px]"
-        style={{
-          border: '3px solid rgba(255,255,255,0.45)',
-          boxShadow: 'inset 0 0 0 8px rgba(255,255,255,0.05)',
-        }}
-      />
-
-      {/* Inner border */}
-      <div
-        className="absolute rounded-[30px]"
-        style={{
-          inset: '8px',
-          border: '1.5px solid rgba(255,255,255,0.15)',
-        }}
-      />
-
-      {/* Center star accent */}
-      <div
-        className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2"
-        style={{ opacity: 0.1 }}
       >
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <path
-            d="M24 4l5.5 14.5H44l-12 8.5 4.5 15L24 34l-12.5 8 4.5-15-12-8.5h14.5z"
-            fill="rgba(255,255,255,0.3)"
-            stroke="rgba(255,255,255,0.15)"
-            strokeWidth="0.5"
-          />
-        </svg>
+        {size.w > 0 && size.h > 0 && (
+          isLandscape ? (
+            // 横屏：直接 cover
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundImage: `url(${TABLE_LANDSCAPE})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+          ) : (
+            // 竖屏：转置 + rotate(90deg)，使旋转后的视觉宽高 = 容器宽高
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: size.h, // 旋转后变成视觉高度
+                height: size.w, // 旋转后变成视觉宽度
+                backgroundImage: `url(${TABLE_PORTRAIT})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                transform: 'translate(-50%, -50%) rotate(90deg)',
+                transformOrigin: 'center center',
+              }}
+            />
+          )
+        )}
       </div>
 
-      {/* Cherry blossoms */}
-      {!isLowEnd && <SakuraPetals />}
+      {/* 暗角 */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[28px]"
+        style={{
+          boxShadow: 'inset 0 0 80px rgba(0,0,0,0.28), inset 0 0 16px rgba(0,0,0,0.18)',
+          background:
+            'radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, rgba(0,0,0,0.15) 100%)',
+        }}
+      />
 
-      {/* Children (community cards, seat ring, etc.) */}
+      {/* 顶部柔光 */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-1/3 rounded-t-[28px]"
+        style={{
+          background: 'linear-gradient(180deg, rgba(255,240,200,0.08) 0%, transparent 100%)',
+        }}
+      />
+
+      {/* 子内容（公牌、座位） */}
       <div className="absolute inset-0 flex items-center justify-center overflow-visible">
         {children}
       </div>

@@ -1,58 +1,31 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { sound, type SfxName } from '../utils/sound';
 
-const STORAGE_KEY = 'joson-poker-muted';
+/**
+ * React 包装：订阅静音状态、暴露 play / toggleMute / isMuted。
+ */
+export function useSound() {
+  const [isMuted, setIsMuted] = useState(() => sound.isMuted());
 
-function tryPlay(src: string) {
-  try {
-    const audio = new Audio(src);
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
-  } catch {
-    // Sound file missing or playback blocked — silent degrade
-  }
+  useEffect(() => sound.subscribe(setIsMuted), []);
+
+  const play = useCallback((name: SfxName) => sound.play(name), []);
+  const toggleMute = useCallback(() => sound.toggleMute(), []);
+
+  return { play, toggleMute, isMuted };
 }
 
-export function useSound() {
-  const [isMuted, setIsMuted] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
+/** 不需要订阅状态、只想触发音效时用这个，避免重渲染。 */
+export function playSound(name: SfxName) {
+  sound.play(name);
+}
 
-  const mutedRef = useRef(isMuted);
-  useEffect(() => {
-    mutedRef.current = isMuted;
-  }, [isMuted]);
+/** 触发短促 BGM（一次性）。 */
+export function playBgm(name: 'anticipation' | 'decisive' | 'fanfareWin' | 'fanfareLose') {
+  sound.playBgm(name);
+}
 
-  const play = useCallback((file: string) => {
-    if (mutedRef.current) return;
-    tryPlay(`/sounds/${file}`);
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    setIsMuted((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
-      } catch {
-        // storage unavailable
-      }
-      return next;
-    });
-  }, []);
-
-  return {
-    playDeal: useCallback(() => play('deal.mp3'), [play]),
-    playFlip: useCallback(() => play('flip.mp3'), [play]),
-    playSelect: useCallback(() => play('select.mp3'), [play]),
-    playConfirm: useCallback(() => play('confirm.mp3'), [play]),
-    playWin: useCallback(() => play('win.mp3'), [play]),
-    playLose: useCallback(() => play('lose.mp3'), [play]),
-    playRound: useCallback(() => play('round.mp3'), [play]),
-    playClick: useCallback(() => play('click.mp3'), [play]),
-    toggleMute,
-    isMuted,
-  };
+/** 立刻停掉 BGM（淡出 ~120ms）。 */
+export function stopBgm() {
+  sound.stopBgm();
 }

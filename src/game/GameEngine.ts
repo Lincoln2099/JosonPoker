@@ -1,5 +1,5 @@
 import { aiPick } from './ai';
-import { AI_ROSTER, MULTS, shuffleArray, type Card } from './Card';
+import { AI_ROSTER, HUMAN_CHAR_IDX, MULTS, shuffleArray, type Card } from './Card';
 import { Deck } from './Deck';
 import { evalHand } from './evaluate';
 import { calcPayouts, type RoundResult } from './payout';
@@ -12,6 +12,8 @@ export interface PlayerState {
   roundScores: number[];
   style: string | null;
   emoji: string;
+  /** 1..8，对应 char-{idx}-*.png 头像。 */
+  charIdx: number;
 }
 
 export interface GameState {
@@ -36,7 +38,7 @@ export type GamePhase =
   | 'result'
   | 'dealing';
 
-export type Screen = 'menu' | 'game' | 'gameover';
+export type Screen = 'loading' | 'menu' | 'chicken' | 'game' | 'gameover';
 
 /** Fork deck so draw() does not mutate the source state's deck. */
 function forkDeck(source: Deck): Deck {
@@ -69,6 +71,7 @@ export function createGame(np: number, ante: number, loserRank: number): GameSta
         roundScores: [],
         style: null,
         emoji: '😊',
+        charIdx: HUMAN_CHAR_IDX,
       });
     } else {
       const ai = aiPool[i - 1]!;
@@ -80,6 +83,7 @@ export function createGame(np: number, ante: number, loserRank: number): GameSta
         roundScores: [],
         style: ai.style,
         emoji: ai.emoji,
+        charIdx: ai.charIdx,
       });
     }
   }

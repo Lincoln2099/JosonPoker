@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { usePerformance } from '../../hooks/usePerformance';
 
-const SPRING_COLORS = ['#4ade80', '#fbbf24', '#ffffff', '#ffb7c5', '#87ceeb', '#ffd700'];
+const SPRING_COLORS = ['#c9a84c', '#e0bf62', '#ffffff', '#d4a0ac', '#7bb8cc', '#6abb7c'];
 
 interface ParticleSystemProps {
   density?: 'normal' | 'high';

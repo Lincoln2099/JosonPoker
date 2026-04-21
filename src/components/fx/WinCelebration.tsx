@@ -6,7 +6,7 @@ interface WinCelebrationProps {
   isBigWin?: boolean;
 }
 
-const CONFETTI_COLORS = ['#4ade80', '#fbbf24', '#ffffff', '#ffb7c5', '#87ceeb', '#ffd700', '#a78bfa'];
+const CONFETTI_COLORS = ['#f0ca50', '#ffd868', '#ffffff', '#45d870', '#60c0e0'];
 const CONFETTI_COUNT = 50;
 
 export default function WinCelebration({ delta, isBigWin = false }: WinCelebrationProps) {
@@ -108,8 +108,8 @@ export default function WinCelebration({ delta, isBigWin = false }: WinCelebrati
         className="absolute inset-0"
         style={{
           background: isBigWin
-            ? 'radial-gradient(circle, rgba(255,215,0,0.5) 0%, rgba(255,215,0,0.1) 50%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(74,222,128,0.3) 0%, transparent 60%)',
+            ? 'radial-gradient(circle, rgba(201,168,76,0.5) 0%, rgba(201,168,76,0.1) 50%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(106,187,124,0.3) 0%, transparent 60%)',
           opacity: 0,
         }}
       />
@@ -140,8 +140,8 @@ export default function WinCelebration({ delta, isBigWin = false }: WinCelebrati
             style={{
               color: isBigWin ? 'var(--gold)' : 'var(--win)',
               textShadow: isBigWin
-                ? '0 0 40px rgba(255,215,0,0.6), 0 4px 20px rgba(0,0,0,0.5)'
-                : '0 0 30px rgba(74,222,128,0.5), 0 4px 20px rgba(0,0,0,0.5)',
+                ? '0 0 20px rgba(201,168,76,0.6), 0 4px 10px rgba(0,0,0,0.5)'
+                : '0 0 15px rgba(106,187,124,0.5), 0 4px 10px rgba(0,0,0,0.5)',
               WebkitTextStroke: '1px rgba(255,255,255,0.2)',
             }}
           >

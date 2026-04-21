@@ -1,11 +1,11 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import gsap from 'gsap';
 import { useGameStore } from '../../store/useGameStore';
 import { useResponsive } from '../../hooks/useResponsive';
 import PlayingCard from './PlayingCard';
 import type { GameState } from '../../game/GameEngine';
 import type { RoundResult } from '../../game/payout';
+import { playSound } from '../../hooks/useSound';
 
 const SIZE_MAP = { mobile: 'sm', tablet: 'md', desktop: 'lg' } as const;
 
@@ -37,7 +37,6 @@ export default function CardHand({ game }: CardHandProps) {
 
   const newCardIds = new Set(game.newCards.map((c) => c.id));
 
-  // Card play fly-out animation
   const flyOutCards = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -74,7 +73,6 @@ export default function CardHand({ game }: CardHandProps) {
     prevSelectedRef.current = [...game.selectedIndices];
   }, [game.phase, game.selectedIndices, flyOutCards]);
 
-  // GSAP stagger deal animation
   useEffect(() => {
     if (game.phase !== 'dealing' && game.phase !== 'select') return;
     const container = containerRef.current;
@@ -83,66 +81,77 @@ export default function CardHand({ game }: CardHandProps) {
     requestAnimationFrame(() => {
       const cards = container.querySelectorAll<HTMLElement>('[data-card-slot]');
       if (cards.length === 0) return;
-      gsap.from(cards, {
-        y: -180,
-        rotation: -12,
-        scale: 0.3,
-        opacity: 0,
-        duration: 0.5,
-        stagger: 0.1,
-        ease: 'back.out(1.7)',
-        clearProps: 'transform,opacity',
+      const count = cards.length;
+      const mid = (count - 1) / 2;
+
+      cards.forEach((card, i) => {
+        const offsetFromCenter = i - mid;
+        // 错峰播放发牌音效，每张牌一个 deal
+        setTimeout(() => playSound('deal'), i * 80);
+        gsap.fromTo(
+          card,
+          {
+            y: -260,
+            x: 0,
+            rotation: 0,
+            scale: 0.4,
+            opacity: 0,
+          },
+          {
+            y: 0,
+            x: 0,
+            rotation: offsetFromCenter * 2,
+            scale: 1,
+            opacity: 1,
+            duration: 0.6,
+            delay: i * 0.08,
+            ease: 'power3.out',
+            clearProps: 'transform,opacity',
+          },
+        );
       });
     });
-  // Only on mount / dealing
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.round]);
 
   return (
     <div
       ref={containerRef}
-      className="scrollbar-hide flex justify-center gap-1.5 overflow-x-auto overflow-y-visible px-2 pt-6 pb-1"
+      className="scrollbar-hide flex justify-center gap-1.5 overflow-visible px-2 pt-8 pb-2"
     >
-      <AnimatePresence mode="popLayout">
-        {human.hand.map((card, i) => {
-          const selected = game.selectedIndices.includes(i);
-          const isPlayed = playedIds.has(card.id);
-          const dimmed = isResult && !isPlayed && humanResult != null;
-          const isNew = newCardIds.has(card.id);
+      {human.hand.map((card, i) => {
+        const selected = game.selectedIndices.includes(i);
+        const isPlayed = playedIds.has(card.id);
+        const dimmed = isResult && !isPlayed && humanResult != null;
+        const isNew = newCardIds.has(card.id);
 
-          return (
-            <motion.div
-              key={card.id}
-              data-card-slot={i}
-              layout
-              initial={{ opacity: 0, y: -60, scale: 0.7 }}
-              animate={{
-                opacity: dimmed ? 0.35 : 1,
-                scale: 1,
-                y: 0,
+        return (
+          <div
+            key={card.id}
+            data-card-slot={i}
+            style={{
+              opacity: dimmed ? 0.35 : 1,
+              transition: 'opacity 0.3s ease',
+              padding: 4,
+            }}
+          >
+            <PlayingCard
+              card={card}
+              size={cardSize}
+              selectable={selectable}
+              selected={selected || (isLastRound && game.phase === 'select')}
+              disabled={!selectable}
+              isNew={isNew && game.phase === 'select'}
+              onClick={() => {
+                if (selectable) {
+                  playSound(selected ? 'deselect' : 'select');
+                }
+                toggleCard(i);
               }}
-              exit={{ opacity: 0, scale: 0.4, y: -200, transition: { duration: 0.4 } }}
-              transition={{
-                type: 'spring',
-                stiffness: 300,
-                damping: 22,
-                delay: i * 0.08,
-              }}
-              className="p-1"
-            >
-              <PlayingCard
-                card={card}
-                size={cardSize}
-                selectable={selectable}
-                selected={selected || (isLastRound && game.phase === 'select')}
-                disabled={!selectable}
-                isNew={isNew && game.phase === 'select'}
-                onClick={() => toggleCard(i)}
-              />
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

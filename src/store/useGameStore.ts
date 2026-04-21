@@ -9,14 +9,27 @@ import {
   type Screen,
 } from '../game/GameEngine';
 
+interface PendingSetup {
+  np: number;
+  ante: number;
+}
+
 interface GameStore {
   screen: Screen;
   game: GameState | null;
+  /** 暂存玩家在菜单选好的人数与底注，等抓鸡场景选完输家名次后启动。 */
+  pending: PendingSetup | null;
+  /** 控制每手结算弹窗的显示。 */
+  showRoundModal: boolean;
 
-  startGame: (np: number, ante: number, loserRank: number) => void;
+  startLoading: () => void;
+  finishLoading: () => void;
+  goToChickenScene: (np: number, ante: number) => void;
+  startGameWithLoser: (loserRank: number) => void;
 
   toggleCardSelection: (index: number) => void;
   confirmPlay: () => void;
+  closeRoundModal: () => void;
   nextRound: () => void;
   goToGameOver: () => void;
   setPhase: (phase: GamePhase) => void;
@@ -26,11 +39,31 @@ interface GameStore {
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  screen: 'menu',
+  screen: 'loading',
   game: null,
+  pending: null,
+  showRoundModal: false,
 
-  startGame: (np, ante, loserRank) => {
-    set({ screen: 'game', game: createGame(np, ante, loserRank) });
+  startLoading: () => {
+    set({ screen: 'loading' });
+  },
+
+  finishLoading: () => {
+    set({ screen: 'menu' });
+  },
+
+  goToChickenScene: (np, ante) => {
+    set({ screen: 'chicken', pending: { np, ante } });
+  },
+
+  startGameWithLoser: (loserRank) => {
+    const pending = get().pending;
+    if (!pending) return;
+    set({
+      screen: 'game',
+      game: createGame(pending.np, pending.ante, loserRank),
+      showRoundModal: false,
+    });
   },
 
   toggleCardSelection: (index) => {
@@ -64,20 +97,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
           phase: 'result',
         },
       });
+
+      // 给胜负特效一些展示时间，再弹结算窗。
+      setTimeout(() => {
+        set({ showRoundModal: true });
+      }, 1100);
     }, 600);
+  },
+
+  closeRoundModal: () => {
+    set({ showRoundModal: false });
   },
 
   nextRound: () => {
     const game = get().game;
     if (!game) return;
 
+    set({ showRoundModal: false });
+
     const isRound3 = game.round === 2;
 
     if (isRound3) {
+      // 第三轮结束 → 翻底牌过场（FlipReveal 完成回调里再发新一轮的牌）
       set({ game: { ...game, phase: 'flip-reveal' } });
       return;
     }
 
+    // 关键：一次性完成「补牌 + 进入下一轮 splash」，不再额外加 dealing 阶段，
+    // 避免 CardHand 在 splash 前后各播一次发牌动画。
     const dealt = dealNewCards(game);
     const round = dealt.round + 1;
 
@@ -90,21 +137,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       game: {
         ...dealt,
         round,
-        phase: 'dealing',
+        phase: 'round-splash',
         selectedIndices: [],
       },
     });
-
-    setTimeout(() => {
-      set((s) => {
-        if (!s.game) return s;
-        return { game: { ...s.game, phase: 'round-splash' } };
-      });
-    }, 800);
   },
 
   goToGameOver: () => {
-    set({ screen: 'gameover' });
+    set({ screen: 'gameover', showRoundModal: false });
   },
 
   setPhase: (phase) => {
@@ -114,12 +154,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   goToMenu: () => {
-    set({ screen: 'menu', game: null });
+    set({ screen: 'menu', game: null, pending: null, showRoundModal: false });
   },
 
   quickRestart: () => {
     const g = get().game;
     if (!g) return;
-    set({ screen: 'game', game: createGame(g.np, g.ante, g.loserRank) });
+    set({
+      screen: 'game',
+      game: createGame(g.np, g.ante, g.loserRank),
+      showRoundModal: false,
+    });
   },
 }));

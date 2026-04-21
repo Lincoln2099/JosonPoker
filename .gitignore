@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 test-results/
+
+# 原始美术资料（已经处理后复制到 public/assets/，源文件无需进 git）
+externalResources/
+

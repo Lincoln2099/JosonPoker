@@ -18,23 +18,32 @@ RANKS.forEach((r, i) => (RANK_VALUES[r] = i + 2));
 
 export const MULTS = [1, 2, 4, 8, 16];
 export const ROUND_CN = ['一', '二', '三', '四', '五'];
-export const STEP_COLORS = ['#4cd964', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b'];
+export const STEP_COLORS = ['#48c878', '#f0ca50', '#f0a048', '#e86060', '#d84040'];
 
 export interface AIConfig {
   name: string;
   style: string;
   emoji: string;
+  /** 1..8，对应 char-N-*.png 头像 */
+  charIdx: number;
 }
 
+/**
+ * 角色按头像观感命名（与 public/assets/avatars/char-{idx}-*.png 一一对应）。
+ * char-1 留给玩家"你"，AI 从 char-2..8 中选取（按局玩家数随机洗牌）。
+ */
 export const AI_ROSTER: AIConfig[] = [
-  { name: '庄家', style: '稳健', emoji: '🎩' },
-  { name: '赌神', style: '激进', emoji: '🔥' },
-  { name: '狐狸', style: '保守', emoji: '🦊' },
-  { name: '疯子', style: '随机', emoji: '🤪' },
-  { name: '算命', style: '计算', emoji: '🔮' },
-  { name: '老千', style: '反向', emoji: '🃏' },
-  { name: '新手', style: '简单', emoji: '🐣' },
+  { name: '教授', style: '稳健', emoji: '🎓', charIdx: 2 },
+  { name: '大叔', style: '激进', emoji: '🔥', charIdx: 3 },
+  { name: '千金', style: '保守', emoji: '👜', charIdx: 4 },
+  { name: '黄毛', style: '随机', emoji: '⚡', charIdx: 5 },
+  { name: '阿娇', style: '计算', emoji: '🌸', charIdx: 6 },
+  { name: '小明', style: '简单', emoji: '🐣', charIdx: 7 },
+  { name: '总监', style: '反向', emoji: '💼', charIdx: 8 },
 ];
+
+/** 玩家"你"固定使用的头像编号。 */
+export const HUMAN_CHAR_IDX = 1;
 
 export const AI_REACT_HAPPY = ['😏', '😎', '🤭', '😼', '🥳', '✌️'];
 export const AI_REACT_ANGRY = ['😤', '😠', '🤬', '💢', '😡'];

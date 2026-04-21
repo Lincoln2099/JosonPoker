@@ -74,7 +74,7 @@ export default function LoseEffect({ delta }: LoseEffectProps) {
         ref={vignetteRef}
         className="absolute inset-0"
         style={{
-          boxShadow: 'inset 0 0 150px rgba(248,113,113,0.7), inset 0 0 60px rgba(220,38,38,0.4)',
+          boxShadow: 'inset 0 0 150px rgba(199,80,80,0.7), inset 0 0 60px rgba(160,50,50,0.4)',
           opacity: 0,
         }}
       />
@@ -86,7 +86,7 @@ export default function LoseEffect({ delta }: LoseEffectProps) {
           className="text-7xl font-black"
           style={{
             color: 'var(--lose)',
-            textShadow: '0 0 30px rgba(248,113,113,0.6), 0 4px 20px rgba(0,0,0,0.5)',
+            textShadow: '0 0 15px rgba(199,80,80,0.6), 0 4px 10px rgba(0,0,0,0.5)',
             WebkitTextStroke: '1px rgba(0,0,0,0.2)',
             opacity: 0,
           }}
