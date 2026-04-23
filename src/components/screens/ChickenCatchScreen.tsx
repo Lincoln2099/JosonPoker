@@ -2,7 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { useGameStore } from '../../store/useGameStore';
-import { playSound, playBgm, stopBgm } from '../../hooks/useSound';
+import {
+  playSound,
+  playBgm,
+  stopBgm,
+  playFileSfx,
+  preloadFileSfx,
+} from '../../hooks/useSound';
+
+const CHICKEN_CAUGHT_SFX = '/assets/sfx/chicken-caught.mp3';
 import { getChickenSrc, HAND_OPEN, HAND_FIST, BG_CATCH_SCENE } from '../../assets/images';
 
 const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
@@ -820,6 +828,8 @@ export default function ChickenCatchScreen() {
     }
     // 抓鸡屏入场 → 紧张 BGM（6s 一次性，组件卸载时立即停掉）
     playBgm('anticipation');
+    // 抓到鸡那一刻要播的音效，提前解码避免首次播放卡顿
+    preloadFileSfx(CHICKEN_CAUGHT_SFX);
     return () => {
       stopBgm();
     };
@@ -858,6 +868,8 @@ export default function ChickenCatchScreen() {
       setShowDust(true);
       setShake(true);
       playSound('thud');
+      // 抓到鸡那一刻同步播放外部 SFX（1654.mp3）
+      playFileSfx(CHICKEN_CAUGHT_SFX, { volume: 0.85 });
       // 鸡被抓住瞬间发出惊叫
       setTimeout(() => playSound('squawk'), 90);
       // 紧接着再来一声短促挣扎 cluck
@@ -906,21 +918,29 @@ export default function ChickenCatchScreen() {
     <div
       className="relative flex h-dvh flex-col overflow-hidden"
       style={{
-        // 樱花林晨光背景 —— 使用真实渲染的 PNG 作为全屏底图
-        backgroundImage: `url(${BG_CATCH_SCENE})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center center',
-        backgroundColor: '#88b06a',
+        // 背景底色 —— 与背景图樱花/草地色调呼应,
+        // 即使图片被竖屏 cover 裁切,边缘也能延续同色,不露白底。
+        backgroundColor: '#9fc37b',
       }}
     >
-      {/* 背景之上的轻度氛围层:顶部再压一点暖黄,底部叠一层偏暗的绿以利于按钮/文字对比 */}
+      {/* 背景图单独一层,确保画面在竖屏时以"下方草地路径"为锚点保持框架感 */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          backgroundImage: `url(${BG_CATCH_SCENE})`,
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          // 优先保留下半部(路径+草地+两侧樱花根部),鸡站在草地上才不会违和
+          backgroundPosition: 'center 68%',
+        }}
+      />
+      {/* 背景之上的轻度氛围层:顶部压一点暖黄晨光,底部淡淡压暗以利于按钮/文字对比 */}
       <div
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           background: `
-            radial-gradient(ellipse 90% 35% at 50% 0%, rgba(255,210,140,0.18) 0%, transparent 70%),
-            linear-gradient(180deg, transparent 0%, transparent 55%, rgba(20,40,25,0.28) 85%, rgba(14,30,18,0.55) 100%)
+            radial-gradient(ellipse 90% 28% at 50% 0%, rgba(255,210,140,0.20) 0%, transparent 70%),
+            linear-gradient(180deg, transparent 0%, transparent 58%, rgba(30,55,30,0.25) 85%, rgba(18,40,22,0.50) 100%)
           `,
         }}
       />
@@ -1009,10 +1029,10 @@ export default function ChickenCatchScreen() {
             className="text-center"
             style={{
               fontFamily: "'Noto Serif SC', 'KaiTi', 'STKaiti', serif",
-              fontSize: 'clamp(24px, 6.2vw, 40px)',
+              fontSize: 'clamp(22px, 5.8vw, 38px)',
               fontWeight: 900,
               color: '#f6c960',
-              letterSpacing: '0.10em',
+              letterSpacing: '0.08em',
               textShadow: `
                 0 0 1px #3a1a06,
                 1.5px 1.5px 0 #3a1a06,
@@ -1025,7 +1045,7 @@ export default function ChickenCatchScreen() {
               whiteSpace: 'nowrap',
             }}
           >
-            今天抓老几？
+            选择要抓的鸡
           </h1>
         </div>
 
