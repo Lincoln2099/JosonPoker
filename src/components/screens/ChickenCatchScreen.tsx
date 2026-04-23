@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { useGameStore } from '../../store/useGameStore';
 import { playSound, playBgm, stopBgm } from '../../hooks/useSound';
-import { getChickenSrc, HAND_OPEN, HAND_FIST } from '../../assets/images';
+import { getChickenSrc, HAND_OPEN, HAND_FIST, BG_CATCH_SCENE } from '../../assets/images';
 
 const CN_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
 
@@ -72,93 +72,16 @@ const IDLE_PATTERNS: Record<number, IdleAnim> = {
   },
 };
 
-/** 每只鸡专属的「号码牌」主题样式 —— 像贴在身上的徽章/铭牌，
- *  保证黑/灰/复杂花纹的鸡身上数字都清晰，同时质感呼应鸡本身的设计 */
-type NumberStyle = {
-  /** 数字字符颜色 */
-  charColor: string;
-  /** 字符描边颜色（可选，进一步提升对比） */
-  charStroke?: string;
-  /** 牌子背景（可以是颜色或渐变） */
-  badgeBg: string;
-  /** 牌子边框颜色 */
-  badgeBorder: string;
-  /** 牌子外发光（可叠多层） */
-  badgeGlow: string;
-  /** 字号倍数（× base 28px × scale） */
-  fontSize: number;
-  /** 数字在鸡身上的纵向位置（0=顶部, 1=底部） */
-  posY: number;
-};
-
-const NUMBER_STYLES: Record<number, NumberStyle> = {
-  // 二号 白 Silkie —— 黑色丝带牌子 + 白字 + 金边（像系在脖子的项链牌）
-  2: {
-    charColor: '#fafafa',
-    badgeBg: 'linear-gradient(180deg, #2a2a2a 0%, #0d0d0d 100%)',
-    badgeBorder: 'rgba(240,202,80,0.85)',
-    badgeGlow: '0 2px 5px rgba(0,0,0,0.55), 0 0 0 1px rgba(240,202,80,0.3)',
-    fontSize: 0.95,
-    posY: 0.62,
-  },
-  // 三号 武士 —— 金牌钉在红甲（金属底 + 深红边 + 黑字）
-  3: {
-    charColor: '#1a0a04',
-    badgeBg: 'linear-gradient(180deg, #ffe88a 0%, #d4a040 50%, #a87018 100%)',
-    badgeBorder: '#5a2010',
-    badgeGlow: '0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.5)',
-    fontSize: 1.0,
-    posY: 0.50,
-  },
-  // 四号 蒸汽朋克 —— 黄铜钉牌（暗铜底 + 深棕边 + 黑字 + 螺丝感阴影）
-  4: {
-    charColor: '#1a0a04',
-    badgeBg: 'linear-gradient(180deg, #e0b060 0%, #a07028 60%, #6a4818 100%)',
-    badgeBorder: '#2a1408',
-    badgeGlow: '0 2px 5px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.4)',
-    fontSize: 1.0,
-    posY: 0.48,
-  },
-  // 五号 星空 —— 暗夜紫黑底 + 银紫边 + 暖黄发光字（融入星云）
-  5: {
-    charColor: '#fff8b0',
-    charStroke: 'rgba(80,40,140,0.6)',
-    badgeBg: 'linear-gradient(180deg, rgba(20,10,55,0.95) 0%, rgba(8,4,30,0.95) 100%)',
-    badgeBorder: 'rgba(180,140,255,0.8)',
-    badgeGlow:
-      '0 0 12px rgba(180,140,255,0.6), 0 0 20px rgba(255,240,150,0.4), 0 2px 5px rgba(0,0,0,0.5)',
-    fontSize: 1.0,
-    posY: 0.56,
-  },
-  // 六号 青花瓷 —— 釉白底 + 钴蓝边 + 钴蓝字（一眼"青花"）
-  6: {
-    charColor: '#1f4f9e',
-    badgeBg: 'linear-gradient(180deg, #fefdf4 0%, #f0e8d0 100%)',
-    badgeBorder: '#1f4f9e',
-    badgeGlow: '0 2px 5px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.6)',
-    fontSize: 1.0,
-    posY: 0.58,
-  },
-  // 七号 熔岩 —— 烧灼黑底 + 火红边 + 发光橘黄字（像被火炼出的烙印）
-  7: {
-    charColor: '#ffe050',
-    charStroke: '#3a0e00',
-    badgeBg: 'linear-gradient(180deg, #1a0a04 0%, #2a0a02 100%)',
-    badgeBorder: '#ff6a18',
-    badgeGlow:
-      '0 0 14px rgba(255,140,40,0.85), 0 0 24px rgba(255,80,0,0.55), 0 2px 5px rgba(0,0,0,0.7)',
-    fontSize: 1.0,
-    posY: 0.52,
-  },
-  // 八号 忍者 —— 黑布带子 + 银白边 + 白字（像缠在身上的忍具）
-  8: {
-    charColor: '#ffffff',
-    badgeBg: 'linear-gradient(180deg, #1a1a1c 0%, #050507 100%)',
-    badgeBorder: 'rgba(220,225,235,0.75)',
-    badgeGlow: '0 2px 5px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.18)',
-    fontSize: 1.0,
-    posY: 0.55,
-  },
+/** 号码牌统一采用设计图里的「白色纸牌 + 黑色汉字」样式
+ *  （仿挂在胸前的方形挂牌），只按不同鸡身比例微调落点 */
+const NUMBER_POS_Y: Record<number, number> = {
+  2: 0.60,
+  3: 0.60,
+  4: 0.58,
+  5: 0.60,
+  6: 0.58,
+  7: 0.60,
+  8: 0.58,
 };
 
 /** ============================================================
@@ -352,53 +275,81 @@ function ChickenFigure({
   );
 }
 
-/** 渲染鸡身上的「号码牌」。每只鸡用 NUMBER_STYLES 里专属的配色 + 边框 + 发光，
- *  统一用「圆角徽章」结构，保证所有花纹复杂的鸡身上数字都清晰可辨。 */
+/** 渲染设计图里那种「挂在胸前的白色方形纸牌 + 细黑边 + 黑色毛笔汉字」。
+ *  顶部再加一根细绳挂带,增强"挂在身上"的感觉。所有鸡统一同一种样式。 */
 function ChickenNumber({ number, scale }: { number: number; scale: number }) {
-  const style = NUMBER_STYLES[number] ?? NUMBER_STYLES[2];
   const safeScale = Math.max(0.55, scale);
-  const fontSize = Math.max(14, 28 * safeScale * style.fontSize);
-  const padX = Math.max(7, 11 * safeScale);
-  const padY = Math.max(3, 5 * safeScale);
-  const radius = Math.max(5, 8 * safeScale);
-  const borderWidth = Math.max(1.4, 2 * safeScale);
-  const strokeWidth = style.charStroke ? Math.max(0.8, 1.5 * safeScale) : 0;
+  const fontSize = Math.max(15, 30 * safeScale);
+  const plateSize = Math.max(30, fontSize * 1.35);
+  const padX = Math.max(5, 7 * safeScale);
+  const padY = Math.max(3, 4 * safeScale);
+  const radius = Math.max(2, 3 * safeScale);
+  const posY = NUMBER_POS_Y[number] ?? 0.60;
+  const ropeWidth = Math.max(1, 1.3 * safeScale);
+  const ropeHeight = Math.max(8, 14 * safeScale);
 
   return (
     <div
       className="pointer-events-none absolute left-1/2"
       style={{
-        top: `${style.posY * 100}%`,
+        top: `${posY * 100}%`,
         transform: 'translate(-50%, -50%)',
         zIndex: 4,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
       }}
     >
+      {/* 挂绳 —— 细黑线从牌子顶部往上斜两条,像 A 字形吊着 */}
+      <svg
+        width={ropeHeight * 1.3}
+        height={ropeHeight}
+        viewBox="0 0 13 10"
+        style={{ marginBottom: -1, overflow: 'visible' }}
+      >
+        <line
+          x1="6.5" y1="0" x2="2" y2="10"
+          stroke="#2a1a10"
+          strokeWidth={ropeWidth}
+          strokeLinecap="round"
+          opacity="0.75"
+        />
+        <line
+          x1="6.5" y1="0" x2="11" y2="10"
+          stroke="#2a1a10"
+          strokeWidth={ropeWidth}
+          strokeLinecap="round"
+          opacity="0.75"
+        />
+      </svg>
       <div
         style={{
           padding: `${padY}px ${padX}px`,
+          minWidth: plateSize,
+          minHeight: plateSize,
           borderRadius: radius,
-          background: style.badgeBg,
-          border: `${borderWidth}px solid ${style.badgeBorder}`,
-          boxShadow: style.badgeGlow,
+          // 仿宣纸:淡米白略带纹理渐变
+          background:
+            'linear-gradient(180deg, #fbf5e2 0%, #f2e9cf 55%, #eaddb4 100%)',
+          border: `${Math.max(1, 1.3 * safeScale)}px solid #2a1a10`,
+          boxShadow:
+            '0 2px 4px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.55) inset, 0 -1px 0 rgba(160,130,70,0.25) inset',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minWidth: fontSize * 1.4,
         }}
       >
         <span
           style={{
-            fontFamily: "'Noto Serif SC', 'PingFang SC', serif",
+            fontFamily: "'Noto Serif SC', 'STKaiti', 'KaiTi', 'PingFang SC', serif",
             fontWeight: 900,
             fontSize,
-            color: style.charColor,
+            color: '#1a0d04',
             lineHeight: 1,
-            letterSpacing: '0.02em',
-            WebkitTextStroke: style.charStroke
-              ? `${strokeWidth}px ${style.charStroke}`
-              : undefined,
+            letterSpacing: 0,
             display: 'inline-block',
             whiteSpace: 'nowrap',
+            textShadow: '0 0 1px rgba(0,0,0,0.25)',
           }}
         >
           {CN_NUM[number]}
@@ -955,14 +906,25 @@ export default function ChickenCatchScreen() {
     <div
       className="relative flex h-dvh flex-col overflow-hidden"
       style={{
-        // 稻田清晨氛围：暖色晨光从上方洒下，中段草绿，底部稍暗
-        background: `
-          radial-gradient(ellipse 90% 45% at 50% -5%, rgba(255,200,120,0.16) 0%, transparent 65%),
-          radial-gradient(ellipse 70% 35% at 50% 105%, rgba(0,0,0,0.35) 0%, transparent 65%),
-          linear-gradient(180deg, #0d1d14 0%, #122818 35%, #0f2214 70%, #0a1810 100%)
-        `,
+        // 樱花林晨光背景 —— 使用真实渲染的 PNG 作为全屏底图
+        backgroundImage: `url(${BG_CATCH_SCENE})`,
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center center',
+        backgroundColor: '#88b06a',
       }}
     >
+      {/* 背景之上的轻度氛围层:顶部再压一点暖黄,底部叠一层偏暗的绿以利于按钮/文字对比 */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 90% 35% at 50% 0%, rgba(255,210,140,0.18) 0%, transparent 70%),
+            linear-gradient(180deg, transparent 0%, transparent 55%, rgba(20,40,25,0.28) 85%, rgba(14,30,18,0.55) 100%)
+          `,
+        }}
+      />
+
       {/* 顶栏 */}
       <div className="relative z-10 flex items-center justify-between pl-5 pr-14 pt-5 sm:pr-5">
         <button
@@ -972,11 +934,12 @@ export default function ChickenCatchScreen() {
           }}
           className="rounded-full px-3 py-1.5 text-[12px] font-bold tracking-wider"
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(240,202,80,0.22)',
-            color: 'rgba(240,225,180,0.85)',
+            background: 'rgba(42,22,8,0.65)',
+            border: '1px solid rgba(240,202,80,0.55)',
+            color: '#ffd868',
             cursor: 'pointer',
             backdropFilter: 'blur(6px)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
           }}
         >
           ← 返回
@@ -984,44 +947,97 @@ export default function ChickenCatchScreen() {
         <div
           className="rounded-full px-3 py-1 text-[11px] font-bold tracking-wider"
           style={{
-            background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(42,22,8,0.7)',
             color: '#ffd868',
-            border: '1px solid rgba(240,202,80,0.22)',
+            border: '1px solid rgba(240,202,80,0.55)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
           }}
         >
           {np} 人局
         </div>
       </div>
 
-      {/* 标题 */}
-      <div className="relative z-10 mt-3 flex flex-col items-center px-5 sm:mt-6">
-        <div className="mb-2 flex items-center gap-3 sm:mb-3">
-          <div className="h-px w-10" style={{ background: 'linear-gradient(90deg, transparent, rgba(240,202,80,0.5))' }} />
-          <span
-            className="text-[10px] tracking-[0.4em]"
-            style={{ color: 'rgba(240,202,80,0.7)', fontWeight: 500 }}
-          >
-            ♠ 抓 鸡 ♠
-          </span>
-          <div className="h-px w-10" style={{ background: 'linear-gradient(270deg, transparent, rgba(240,202,80,0.5))' }} />
-        </div>
-
-        <h1
+      {/* 标题 —— 仿设计图樱花林里挂着的木质招牌 */}
+      <div className="relative z-10 mt-3 flex flex-col items-center px-5 sm:mt-4">
+        <div
           ref={titleRef}
-          className="text-center"
+          className="relative"
           style={{
-            fontFamily: "'Noto Serif SC', serif",
-            fontSize: 'clamp(28px, 7vw, 48px)',
-            fontWeight: 900,
-            color: '#ffd868',
-            letterSpacing: '0.08em',
-            textShadow: '0 2px 24px rgba(240,202,80,0.35), 0 1px 0 rgba(0,0,0,0.5)',
+            // 木板基底
+            background: `
+              linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 82%, rgba(0,0,0,0.18) 100%),
+              repeating-linear-gradient(92deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 2%, rgba(255,220,180,0.05) 4%, rgba(0,0,0,0.1) 7%),
+              linear-gradient(180deg, #8a5a30 0%, #6e4220 25%, #89582b 50%, #6a4120 75%, #542f18 100%)
+            `,
+            padding: 'clamp(8px, 1.8vw, 14px) clamp(26px, 7vw, 56px)',
+            borderRadius: 'clamp(12px, 3vw, 22px)',
+            border: '2.5px solid #2a1608',
+            boxShadow: `
+              0 10px 28px rgba(0,0,0,0.55),
+              inset 0 2px 0 rgba(255,210,160,0.35),
+              inset 0 -3px 0 rgba(0,0,0,0.5),
+              inset 0 0 0 1.5px rgba(255,210,160,0.18)
+            `,
+            // 两侧略微凸出的木头边,增加立体"匾额"感
+            filter: 'drop-shadow(0 6px 8px rgba(0,0,0,0.35))',
           }}
         >
-          今天抓老几？
-        </h1>
+          {/* 四角小铆钉 */}
+          {([
+            { top: 6, left: 10 },
+            { top: 6, right: 10 },
+            { bottom: 6, left: 10 },
+            { bottom: 6, right: 10 },
+          ] as const).map((pos, i) => (
+            <div
+              key={i}
+              className="absolute"
+              style={{
+                ...pos,
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background:
+                  'radial-gradient(circle at 35% 35%, #ffde8c 0%, #c18a2e 55%, #5a3610 100%)',
+                boxShadow:
+                  '0 1px 1.5px rgba(0,0,0,0.55), inset 0 -0.5px 0.5px rgba(0,0,0,0.4)',
+              }}
+            />
+          ))}
 
-        <p className="mt-2 text-center text-[11px] sm:mt-3 sm:text-[12px]" style={{ color: '#a8a090' }}>
+          <h1
+            className="text-center"
+            style={{
+              fontFamily: "'Noto Serif SC', 'KaiTi', 'STKaiti', serif",
+              fontSize: 'clamp(24px, 6.2vw, 40px)',
+              fontWeight: 900,
+              color: '#f6c960',
+              letterSpacing: '0.10em',
+              textShadow: `
+                0 0 1px #3a1a06,
+                1.5px 1.5px 0 #3a1a06,
+                -1px -1px 0 #3a1a06,
+                0 2px 0 rgba(0,0,0,0.45),
+                0 0 14px rgba(255,205,90,0.4)
+              `,
+              margin: 0,
+              lineHeight: 1.15,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            今天抓老几？
+          </h1>
+        </div>
+
+        <p
+          className="mt-3 text-center text-[11px] sm:text-[12px]"
+          style={{
+            color: '#2a1a08',
+            fontWeight: 700,
+            textShadow: '0 1px 0 rgba(255,245,220,0.55)',
+            letterSpacing: '0.04em',
+          }}
+        >
           点击下方一只小鸡 · 中签者即为本局输家
         </p>
       </div>
