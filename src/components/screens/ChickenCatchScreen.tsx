@@ -923,25 +923,23 @@ export default function ChickenCatchScreen() {
         backgroundColor: '#9fc37b',
       }}
     >
-      {/* 背景图单独一层,确保画面在竖屏时以"下方草地路径"为锚点保持框架感 */}
+      {/* 背景图(已包含设计稿里的木牌"选择要抓的鸡"+樱花拱门+草地路径) */}
       <div
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           backgroundImage: `url(${BG_CATCH_SCENE})`,
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'cover',
-          // 优先保留下半部(路径+草地+两侧樱花根部),鸡站在草地上才不会违和
-          backgroundPosition: 'center 68%',
+          backgroundPosition: 'center center',
         }}
       />
-      {/* 背景之上的轻度氛围层:顶部压一点暖黄晨光,底部淡淡压暗以利于按钮/文字对比 */}
+      {/* 极轻量氛围层:仅在最底部一点压暗,让操作按钮区有更好对比度,
+          其余地方完全保留背景画面本身的色彩 */}
       <div
         className="pointer-events-none absolute inset-0 z-0"
         style={{
-          background: `
-            radial-gradient(ellipse 90% 28% at 50% 0%, rgba(255,210,140,0.20) 0%, transparent 70%),
-            linear-gradient(180deg, transparent 0%, transparent 58%, rgba(30,55,30,0.25) 85%, rgba(18,40,22,0.50) 100%)
-          `,
+          background:
+            'linear-gradient(180deg, transparent 0%, transparent 70%, rgba(20,40,22,0.22) 90%, rgba(14,30,18,0.42) 100%)',
         }}
       />
 
@@ -977,85 +975,18 @@ export default function ChickenCatchScreen() {
         </div>
       </div>
 
-      {/* 标题 —— 仿设计图樱花林里挂着的木质招牌 */}
-      <div className="relative z-10 mt-3 flex flex-col items-center px-5 sm:mt-4">
-        <div
-          ref={titleRef}
-          className="relative"
-          style={{
-            // 木板基底
-            background: `
-              linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 82%, rgba(0,0,0,0.18) 100%),
-              repeating-linear-gradient(92deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 2%, rgba(255,220,180,0.05) 4%, rgba(0,0,0,0.1) 7%),
-              linear-gradient(180deg, #8a5a30 0%, #6e4220 25%, #89582b 50%, #6a4120 75%, #542f18 100%)
-            `,
-            padding: 'clamp(8px, 1.8vw, 14px) clamp(26px, 7vw, 56px)',
-            borderRadius: 'clamp(12px, 3vw, 22px)',
-            border: '2.5px solid #2a1608',
-            boxShadow: `
-              0 10px 28px rgba(0,0,0,0.55),
-              inset 0 2px 0 rgba(255,210,160,0.35),
-              inset 0 -3px 0 rgba(0,0,0,0.5),
-              inset 0 0 0 1.5px rgba(255,210,160,0.18)
-            `,
-            // 两侧略微凸出的木头边,增加立体"匾额"感
-            filter: 'drop-shadow(0 6px 8px rgba(0,0,0,0.35))',
-          }}
-        >
-          {/* 四角小铆钉 */}
-          {([
-            { top: 6, left: 10 },
-            { top: 6, right: 10 },
-            { bottom: 6, left: 10 },
-            { bottom: 6, right: 10 },
-          ] as const).map((pos, i) => (
-            <div
-              key={i}
-              className="absolute"
-              style={{
-                ...pos,
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background:
-                  'radial-gradient(circle at 35% 35%, #ffde8c 0%, #c18a2e 55%, #5a3610 100%)',
-                boxShadow:
-                  '0 1px 1.5px rgba(0,0,0,0.55), inset 0 -0.5px 0.5px rgba(0,0,0,0.4)',
-              }}
-            />
-          ))}
-
-          <h1
-            className="text-center"
-            style={{
-              fontFamily: "'Noto Serif SC', 'KaiTi', 'STKaiti', serif",
-              fontSize: 'clamp(22px, 5.8vw, 38px)',
-              fontWeight: 900,
-              color: '#f6c960',
-              letterSpacing: '0.08em',
-              textShadow: `
-                0 0 1px #3a1a06,
-                1.5px 1.5px 0 #3a1a06,
-                -1px -1px 0 #3a1a06,
-                0 2px 0 rgba(0,0,0,0.45),
-                0 0 14px rgba(255,205,90,0.4)
-              `,
-              margin: 0,
-              lineHeight: 1.15,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            选择要抓的鸡
-          </h1>
-        </div>
-
+      {/* 标题已经直接画进背景图（"选择要抓的鸡"金字木牌）,
+          这里只放一个不可见的 ref 锚点供入场动画使用 + 一条副标题提示 */}
+      <div className="relative z-10 flex flex-col items-center px-5">
+        <div ref={titleRef} aria-hidden style={{ height: 0, width: 0 }} />
         <p
-          className="mt-3 text-center text-[11px] sm:text-[12px]"
+          className="mt-2 text-center text-[11px] sm:mt-3 sm:text-[12px]"
           style={{
-            color: '#2a1a08',
+            color: '#fff7d8',
             fontWeight: 700,
-            textShadow: '0 1px 0 rgba(255,245,220,0.55)',
-            letterSpacing: '0.04em',
+            textShadow:
+              '0 1px 2px rgba(0,0,0,0.55), 0 0 8px rgba(70,30,8,0.6)',
+            letterSpacing: '0.05em',
           }}
         >
           点击下方一只小鸡 · 中签者即为本局输家
