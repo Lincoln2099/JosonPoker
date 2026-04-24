@@ -152,8 +152,8 @@ function ChickenFigure({
           border: 'none',
           padding: 0,
           cursor: pickable ? 'pointer' : 'default',
-          opacity: dimmed ? 0.42 : 1,
-          filter: dimmed ? 'grayscale(0.45) brightness(0.7)' : 'none',
+          opacity: dimmed ? 0.7 : 1,
+          filter: dimmed ? 'grayscale(0.18) brightness(0.86)' : 'none',
           transition: 'opacity .35s ease, filter .35s ease',
           transformOrigin: '50% 50%',
         }}
@@ -249,9 +249,9 @@ function ChickenFigure({
         )}
 
         {/* === 鸡本体 ===
-          * 用 mask-image 把底部那一小段(原 PNG 渲染时烤进去的浅灰地板阴影)渐变淡出,
-          * 让鸡脚自然过渡到透明,不再有"鸡脚旁的白色斑块"
-          */}
+          * PNG 里残留的烘焙地面halo 已经在 build-time 用连通域算法精准擦掉
+          * (见 public/assets/chickens/, 处理脚本是按"光-低饱和-下沿-横向blob"
+          *  识别 ground halo,以高饱和锚点保护鸡腿) —— 因此运行时不再需要 mask. */}
         <img
           src={getChickenSrc(number)}
           alt={`老${CN_NUM[number]}号小鸡`}
@@ -265,19 +265,109 @@ function ChickenFigure({
             display: 'block',
             userSelect: 'none',
             pointerEvents: 'none',
-            filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.3))',
-            // 底部 8% 渐隐 → 把图里烘焙的白色地面投影擦掉,只保留鸡脚
-            maskImage:
-              'linear-gradient(to bottom, black 0%, black 92%, transparent 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to bottom, black 0%, black 92%, transparent 100%)',
+            // 深一点的 drop-shadow + 一圈很轻的暗色描边,让白鸡也能从
+            // 暖色草地背景里跳出来 (否则白胸+白号码牌跟背景混成一团)
+            filter:
+              'drop-shadow(0 4px 8px rgba(0,0,0,0.42)) drop-shadow(0 0 1px rgba(40,28,12,0.55))',
           }}
         />
+
+        {/* === 鸡脚接地融合层 ===
+          * 不再是矢量草叶 (跟 Pixar 烘焙草地冲突,显得漫画化),
+          * 改成柔焦绿色斑块,把鸡脚跟背景草地软融合。
+          */}
+        <GrassFoliage w={w} scale={scale} />
 
         {/* === 胸前白色号码牌 === */}
         <ChickenNumber number={number} scale={scale} />
       </motion.button>
     </motion.div>
+  );
+}
+
+/** 鸡脚前景"接地层" —— 不画硬线条草叶,而是用柔焦绿色斑块
+ *  + 极淡的暖光,把鸡脚跟背景草地软融合。
+ *
+ *  设计原则(回应"草跟草坪不自然"反馈):
+ *  - 不再使用 stroke 画矢量草叶 (那是漫画线条,跟 Pixar 烘焙草地冲突)
+ *  - 改用大尺度 gaussian-blur 的填充椭圆 → 像油画里柔焦的近景草色
+ *  - 主体只是一道软绿"色温接合带" + 一颗很淡的金色高光
+ *  - 完全不抢戏,目标是"看不见"地把白脚阴影抹平 */
+function GrassFoliage({ w, scale }: { w: number; scale: number }) {
+  const bandW = w * 1.12;
+  const bandH = 26 * scale;
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2"
+      style={{
+        bottom: -2 * scale,
+        transform: 'translateX(-50%)',
+        width: bandW,
+        height: bandH,
+        zIndex: 3,
+      }}
+    >
+      {/* 1) 主接地带 —— 整个底部一道大椭圆软绿,冷暖对比的"阴绿" */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 100% at 50% 95%, rgba(56,92,38,0.38) 0%, rgba(72,108,46,0.22) 35%, rgba(96,128,60,0.10) 65%, transparent 90%)',
+          filter: 'blur(3px)',
+        }}
+      />
+      {/* 2) 三处柔焦草簇 —— 圆形低饱和绿,模拟近景失焦的草丛肿块 */}
+      <div
+        className="absolute"
+        style={{
+          left: '12%',
+          bottom: 0,
+          width: '28%',
+          height: '85%',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 50% 80%, rgba(74,118,42,0.55) 0%, rgba(86,128,52,0.28) 45%, transparent 75%)',
+          filter: 'blur(2.5px)',
+        }}
+      />
+      <div
+        className="absolute"
+        style={{
+          left: '38%',
+          bottom: 0,
+          width: '24%',
+          height: '70%',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 50% 80%, rgba(98,140,58,0.45) 0%, rgba(110,150,68,0.22) 45%, transparent 78%)',
+          filter: 'blur(2px)',
+        }}
+      />
+      <div
+        className="absolute"
+        style={{
+          right: '10%',
+          bottom: 0,
+          width: '30%',
+          height: '90%',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 50% 80%, rgba(68,112,38,0.52) 0%, rgba(80,124,48,0.25) 48%, transparent 78%)',
+          filter: 'blur(2.5px)',
+        }}
+      />
+      {/* 3) 顶层暖金高光 —— 极淡的落日反射,跟背景天空色温呼应 */}
+      <div
+        className="absolute inset-x-0"
+        style={{
+          top: 0,
+          height: '40%',
+          background:
+            'linear-gradient(to bottom, rgba(255,210,140,0.10) 0%, transparent 100%)',
+          filter: 'blur(2px)',
+        }}
+      />
+    </div>
   );
 }
 

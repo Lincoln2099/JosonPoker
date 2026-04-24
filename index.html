@@ -10,12 +10,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet" />
     <!--
       Ma Shan Zheng: 抓鸡屏号码牌专用毛笔字。
-      用 display=block 而不是 swap,避免出现"先用宋体显示再切换成毛笔字"的丑陋闪烁(FOUT)。
-      block 模式下文字会先 invisible 最多 3 秒等待字体加载,加载完才出现。
-      首次加载后浏览器会缓存,后续都瞬时可用。
+      用 display=optional —— 首屏显示时立刻用回退字体,字体已缓存就直接使用毛笔字,
+      没缓存就一直显示回退字体(不会突兀切换,也不会显示空白)。
+      首次加载后浏览器会缓存,后续访问即可用毛笔字体。
     -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=block" />
-    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=block" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=optional" />
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=optional" rel="stylesheet" />
     <title>分轮倍增赛 - JosonPoker</title>
   </head>
   <body>
