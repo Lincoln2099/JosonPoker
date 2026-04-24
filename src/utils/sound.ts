@@ -60,8 +60,80 @@ class SoundManager {
   private sfxBuffers = new Map<string, AudioBuffer>();
   private sfxLoading = new Map<string, Promise<AudioBuffer | null>>();
 
+  /** Page-Visibility 自动暂停标志:tab 隐藏时把 ctx 置为 suspended,可见时恢复 */
+  private pageHiddenSuspend = false;
+  private visibilityHandler: (() => void) | null = null;
+
   constructor() {
     this.muted = this.loadMuted();
+    this.installVisibilityHook();
+  }
+
+  /**
+   * 注册 Page Visibility 监听:
+   *   - tab/窗口隐藏 → suspend AudioContext(无声 + 节能)
+   *   - tab/窗口可见 → 仅在用户没有手动静音时 resume
+   * 这能彻底杜绝"网页切到后台还在响"的情况。
+   */
+  private installVisibilityHook(): void {
+    if (typeof document === 'undefined') return;
+    if (this.visibilityHandler) return;
+    this.visibilityHandler = () => {
+      if (!this.ctx) return;
+      if (document.hidden) {
+        if (this.ctx.state === 'running') {
+          this.pageHiddenSuspend = true;
+          this.ctx.suspend().catch(() => {
+            /* ignore */
+          });
+        }
+      } else {
+        if (this.pageHiddenSuspend && !this.muted && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {
+            /* ignore */
+          });
+        }
+        this.pageHiddenSuspend = false;
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler, { passive: true });
+    window.addEventListener('pagehide', this.visibilityHandler, { passive: true });
+  }
+
+  /**
+   * 完全释放音频资源:停所有源、断主 gain、关闭 AudioContext。
+   * 在 App 启动时调用一次,清掉 HMR/旧 session 残留;
+   * 也用于 HMR dispose 钩子。
+   */
+  destroy(): void {
+    this.hardStopBgm();
+    this.hardStopAmbient();
+    this.ambientActive = false;
+    if (this.masterGain) {
+      try {
+        this.masterGain.disconnect();
+      } catch {
+        /* ignore */
+      }
+      this.masterGain = null;
+    }
+    if (this.ctx) {
+      try {
+        if (this.ctx.state !== 'closed') void this.ctx.close();
+      } catch {
+        /* ignore */
+      }
+      this.ctx = null;
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      try {
+        document.removeEventListener('visibilitychange', this.visibilityHandler);
+        window.removeEventListener('pagehide', this.visibilityHandler);
+      } catch {
+        /* ignore */
+      }
+      this.visibilityHandler = null;
+    }
   }
 
   // ---------- 公共 API ----------
@@ -919,3 +991,15 @@ class SoundManager {
 
 export const sound = new SoundManager();
 export type { SfxName };
+
+// HMR 兜底:Vite 热更新本模块时,先把旧实例的 AudioContext + 所有源彻底关掉,
+// 防止"修改音效代码后旧的鬼影 BGM 还在后台疯狂响"。
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    try {
+      sound.destroy();
+    } catch {
+      /* ignore */
+    }
+  });
+}
