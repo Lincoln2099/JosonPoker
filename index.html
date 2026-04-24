@@ -6,7 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Ma+Shan+Zheng&display=swap" rel="stylesheet" />
+    <!-- Noto Serif SC: 用于按钮/标题,允许 swap (差异不大) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet" />
+    <!--
+      Ma Shan Zheng: 抓鸡屏号码牌专用毛笔字。
+      用 display=block 而不是 swap,避免出现"先用宋体显示再切换成毛笔字"的丑陋闪烁(FOUT)。
+      block 模式下文字会先 invisible 最多 3 秒等待字体加载,加载完才出现。
+      首次加载后浏览器会缓存,后续都瞬时可用。
+    -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=block" />
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=block" rel="stylesheet" />
     <title>分轮倍增赛 - JosonPoker</title>
   </head>
   <body>

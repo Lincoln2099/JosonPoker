@@ -8,7 +8,7 @@ import {
   playFileSfx,
   preloadFileSfx,
 } from '../../hooks/useSound';
-import { getChickenSrc, BG_CATCH_SCENE, GRASS_STRIP } from '../../assets/images';
+import { getChickenSrc, BG_CATCH_SCENE } from '../../assets/images';
 
 /** 玩家确定后播放的"鸡鸣"音效(用户提供的 mp3 文件)。 */
 const CHICKEN_CROW_SFX = '/assets/sfx/chicken-caught.mp3';
@@ -214,16 +214,19 @@ function ChickenFigure({
           </div>
         )}
 
-        {/* 地面阴影 */}
+        {/* 地面阴影 —— 加大加深,让鸡像真的踩在草地里,
+              同时盖住 PNG 底部任何残留的浅色像素 */}
         <div
           className="pointer-events-none absolute left-1/2 -translate-x-1/2"
           style={{
-            bottom: 2,
-            width: 88 * scale,
-            height: 12 * scale,
+            bottom: 6 * scale,
+            width: 150 * scale,
+            height: 22 * scale,
             borderRadius: '50%',
-            background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 70%)',
-            zIndex: 0,
+            background:
+              'radial-gradient(ellipse, rgba(20,30,10,0.55) 0%, rgba(20,30,10,0.30) 35%, transparent 75%)',
+            filter: 'blur(2px)',
+            zIndex: 1,
           }}
         />
 
@@ -245,7 +248,10 @@ function ChickenFigure({
           />
         )}
 
-        {/* === 鸡本体 === */}
+        {/* === 鸡本体 ===
+          * 用 mask-image 把底部那一小段(原 PNG 渲染时烤进去的浅灰地板阴影)渐变淡出,
+          * 让鸡脚自然过渡到透明,不再有"鸡脚旁的白色斑块"
+          */}
         <img
           src={getChickenSrc(number)}
           alt={`老${CN_NUM[number]}号小鸡`}
@@ -260,6 +266,11 @@ function ChickenFigure({
             userSelect: 'none',
             pointerEvents: 'none',
             filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.3))',
+            // 底部 8% 渐隐 → 把图里烘焙的白色地面投影擦掉,只保留鸡脚
+            maskImage:
+              'linear-gradient(to bottom, black 0%, black 92%, transparent 100%)',
+            WebkitMaskImage:
+              'linear-gradient(to bottom, black 0%, black 92%, transparent 100%)',
           }}
         />
 
@@ -282,7 +293,6 @@ function ChickenNumber({ number, scale }: { number: number; scale: number }) {
   const plateW = Math.round(fontSize * 1.18);
   const plateH = Math.round(fontSize * 1.18);
   const radius = Math.max(2, 3 * safeScale);
-  const borderW = Math.max(1.4, 2 * safeScale);
   const posY = NUMBER_POS_Y[number] ?? 0.60;
 
   return (
@@ -300,12 +310,17 @@ function ChickenNumber({ number, scale }: { number: number; scale: number }) {
           width: plateW,
           height: plateH,
           borderRadius: radius,
-          // 半透明的米白纸感(对齐设计稿——能透出鸡羽毛的颜色,不是死白纸)
-          background: 'rgba(252, 248, 232, 0.55)',
-          border: `${borderW}px solid rgba(38, 24, 12, 0.85)`,
-          boxShadow:
-            '0 2px 5px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.35) inset',
-          backdropFilter: 'blur(2px)',
+          // 暖米色半透明纸牌 —— 跟落日樱花暖色调融合,
+          // 不再是抢眼的纯白磨砂玻璃,鸡看上去自然不僵硬
+          background: 'rgba(248, 232, 200, 0.55)',
+          border: 'none',
+          // 只保留极淡的暗轮廓 + 立体投影,去掉抢戏的白色高光圈
+          boxShadow: [
+            '0 0 0 1px rgba(82, 50, 22, 0.28)',   // 暖棕色细描边代替白光圈
+            '0 3px 7px rgba(0,0,0,0.28)',         // 柔和投影
+          ].join(', '),
+          backdropFilter: 'blur(3px)',
+          WebkitBackdropFilter: 'blur(3px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -413,15 +428,15 @@ export default function ChickenCatchScreen() {
   const maxRowLen = Math.max(...rows.map((r) => r.length));
 
   // 缩放按「最宽一排」宽度约束 + 纵向空间预算两路约束，取较小者
-  const baseChickenW = 260;
+  const baseChickenW = 320; // 比之前 260 加大,让鸡更醒目
   const baseGap = maxRowLen >= 4 ? 4 : maxRowLen >= 3 ? 8 : 14;
   const stagePadding = 16;
   const usable = Math.max(0, stageW - stagePadding);
   const totalNeeded = maxRowLen * baseChickenW + (maxRowLen - 1) * baseGap;
   const scaleByW = stageW > 0 && totalNeeded > usable ? usable / totalNeeded : 1;
-  // 纵向约束：最多 45% dvh 给鸡群，防止两排鸡挤掉下方按钮
+  // 纵向约束：放宽到 55% dvh,让鸡占满下半部草地区域
   const budgetH =
-    typeof window !== 'undefined' ? window.innerHeight * 0.45 : 380;
+    typeof window !== 'undefined' ? window.innerHeight * 0.55 : 460;
   const verticalNeeded = rows.length * baseChickenW + (rows.length - 1) * 6;
   const scaleByH = verticalNeeded > budgetH ? budgetH / verticalNeeded : 1;
   const chickenScale = Math.min(scaleByW, scaleByH);
@@ -437,33 +452,17 @@ export default function ChickenCatchScreen() {
         backgroundColor: '#1f3e10',
       }}
     >
-      {/* 1) 背景图 —— 用 object-fit: cover 铺满整个视口,
-            竖屏手机也能 100% 填满高度,不再有"中间一片纯色" */}
+      {/* 背景图 —— 用户提供的纵向 571x1024 构图,
+            木牌"选择要抓的鸡" + 樱花林 + 山丘小道 + 花草地全部一体 */}
       <img
         src={BG_CATCH_SCENE}
-        alt="樱花林木牌"
+        alt="选择要抓的鸡 - 樱花林"
         draggable={false}
         className="absolute inset-0 h-full w-full select-none"
         style={{
           objectFit: 'cover',
-          objectPosition: 'center top',
+          objectPosition: 'center center',
           zIndex: 0,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* 2) 草地条 —— 贴视口底部,鸡正好站在雏菊+花瓣上 */}
-      <img
-        src={GRASS_STRIP}
-        alt=""
-        aria-hidden
-        draggable={false}
-        className="absolute inset-x-0 bottom-0 w-full select-none"
-        style={{
-          height: 'clamp(140px, 24vh, 220px)',
-          objectFit: 'cover',
-          objectPosition: 'center bottom',
-          zIndex: 1,
           pointerEvents: 'none',
         }}
       />
@@ -504,14 +503,16 @@ export default function ChickenCatchScreen() {
       {/* 4) 入场动画的隐藏锚点 */}
       <div ref={titleRef} aria-hidden style={{ height: 0, width: 0 }} />
 
-      {/* 5) 主内容区 —— absolute 占满,内部用 flex 把鸡群+底部按钮挤到下方 */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-end pb-4 sm:pb-8">
-
-      {/* 舞台 —— 鸡群直接站在草地条上 */}
-      <div className="flex flex-col items-center px-5">
+      {/* 5) 鸡群舞台 —— 用 absolute + bottom 让鸡群浮在草地"中部"
+            而不是贴底,让脚下还能露出一点花草地,跟设计图一致
+            ⚠️ stageRef 必须挂在 w-full 容器上避免 ResizeObserver 循环 */}
+      <div
+        className="absolute inset-x-0 z-10 flex flex-col items-center"
+        style={{ bottom: 'clamp(110px, 22vh, 220px)' }}
+      >
         <div
           ref={stageRef}
-          className="relative w-full max-w-[720px] overflow-visible py-2"
+          className="relative w-full max-w-[720px] overflow-visible px-5 py-2"
         >
           {/* 鸡群：>4 只自动换两排，每排居中 */}
           <div
@@ -547,8 +548,8 @@ export default function ChickenCatchScreen() {
         </div>
       </div>
 
-      {/* 底部操作 */}
-      <div className="flex flex-col items-center gap-2 px-6 pb-2 pt-3 sm:gap-3 sm:pb-4 sm:pt-4">
+      {/* 6) 底部操作区 —— 永远贴视口底,跟鸡群分开布局以便鸡群独立调位置 */}
+      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2 px-6 pb-3 pt-2 sm:gap-3 sm:pb-5">
         <AnimatePresence mode="wait">
           {selected === null ? (
             <motion.div
@@ -556,8 +557,14 @@ export default function ChickenCatchScreen() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="text-center text-[12px] tracking-wider"
-              style={{ color: '#9a9080' }}
+              className="rounded-full px-4 py-1.5 text-center text-[12px] font-bold tracking-wider"
+              style={{
+                color: '#fff8e0',
+                background: 'rgba(20,12,4,0.5)',
+                border: '1px solid rgba(255,220,140,0.35)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                backdropFilter: 'blur(6px)',
+              }}
             >
               小鸡 2 ~ {np} 号 · 选中即为输家
             </motion.div>
@@ -621,8 +628,6 @@ export default function ChickenCatchScreen() {
           )}
         </AnimatePresence>
       </div>
-
-      </div>{/* /主内容区 */}
 
       {/* 鸡鸣瞬间柔和的金色暖光过场 */}
       <AnimatePresence>
