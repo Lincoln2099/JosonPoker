@@ -35,12 +35,30 @@ type BgmName =
 
 const STORAGE_KEY = 'joson-poker-muted';
 
+/** 环境 BGM（循环播放的文件资源） */
+const AMBIENT_BASE_GAIN = 0.32;
+const AMBIENT_DUCK_GAIN = 0.09;
+const AMBIENT_FADE = 0.8;
+
 class SoundManager {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private bgmGain: GainNode | null = null;
   private muted: boolean;
   private listeners = new Set<(muted: boolean) => void>();
+
+  // ---- 环境 BGM（基于音频文件循环） ----
+  private ambientUrl: string | null = null;
+  private ambientBuffer: AudioBuffer | null = null;
+  private ambientLoading: Promise<AudioBuffer | null> | null = null;
+  private ambientSource: AudioBufferSourceNode | null = null;
+  private ambientGain: GainNode | null = null;
+  private ambientActive = false;
+  private ambientDucked = false;
+
+  // ---- 文件型一次性 SFX（按 URL 缓存 decoded buffer） ----
+  private sfxBuffers = new Map<string, AudioBuffer>();
+  private sfxLoading = new Map<string, Promise<AudioBuffer | null>>();
 
   constructor() {
     this.muted = this.loadMuted();
@@ -63,14 +81,106 @@ class SoundManager {
     } catch {
       /* storage unavailable */
     }
-    if (this.masterGain && this.ctx) {
-      this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.masterGain.gain.setValueAtTime(value ? 0 : 0.6, this.ctx.currentTime);
+    if (value) {
+      // 静音 —— 三重保险确保所有声音(SFX + 短 BGM + 循环环境 BGM)立刻停掉:
+      //   1) gain → 0（消除参数自动化的 in-progress 渐变）
+      //   2) disconnect 主 gain 与 destination（物理切断信号路径,瞬间静音）
+      //   3) 立即停掉所有正在播的源（短 BGM + 环境 BGM,不做淡出）
+      //   4) suspend AudioContext 节能
+      if (this.ctx && this.masterGain) {
+        try {
+          this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
+          this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime);
+        } catch {
+          /* ignore */
+        }
+        try {
+          this.masterGain.disconnect();
+        } catch {
+          /* already disconnected */
+        }
+      }
+      // 短 BGM(playBgm)立刻断开 + source 停
+      this.hardStopBgm();
+      // 环境 BGM(startAmbient)立刻断开 + source 停（保留 ambientActive 意图,unmute 时会自动恢复）
+      this.hardStopAmbient();
+      if (this.ctx && this.ctx.state === 'running') {
+        this.ctx.suspend().catch(() => {
+          /* ignore */
+        });
+      }
+    } else {
+      // 取消静音：先 resume ctx,再把 masterGain 重新接回 destination,gain 恢复,
+      // 若环境 BGM 之前是激活状态就重启
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {
+          /* ignore */
+        });
+      }
+      if (this.masterGain && this.ctx) {
+        try {
+          this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
+          this.masterGain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+        } catch {
+          /* ignore */
+        }
+        try {
+          this.masterGain.connect(this.ctx.destination);
+        } catch {
+          /* already connected */
+        }
+      }
+      if (this.ambientActive && this.ambientBuffer) {
+        this.playAmbientNow();
+      }
     }
-    // 静音时一并停掉正在播的 BGM
-    if (value) this.stopBgm();
     this.listeners.forEach((cb) => cb(value));
     return value;
+  }
+
+  /** 立刻断开短 BGM(playBgm)的所有节点,无淡出。 */
+  private hardStopBgm(): void {
+    if (!this.ctx || !this.bgmGain) return;
+    const node = this.bgmGain;
+    this.bgmGain = null;
+    try {
+      node.gain.cancelScheduledValues(this.ctx.currentTime);
+      node.gain.setValueAtTime(0, this.ctx.currentTime);
+    } catch {
+      /* ignore */
+    }
+    try {
+      node.disconnect();
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  /** 立刻断开环境 BGM 的源 + gain,无淡出。保留 ambientActive 意图 flag。 */
+  private hardStopAmbient(): void {
+    const source = this.ambientSource;
+    const gainNode = this.ambientGain;
+    this.ambientSource = null;
+    this.ambientGain = null;
+    if (source) {
+      try {
+        source.stop();
+      } catch {
+        /* already stopped */
+      }
+      try {
+        source.disconnect();
+      } catch {
+        /* already disconnected */
+      }
+    }
+    if (gainNode) {
+      try {
+        gainNode.disconnect();
+      } catch {
+        /* already disconnected */
+      }
+    }
   }
 
   subscribe(cb: (muted: boolean) => void): () => void {
@@ -147,6 +257,15 @@ class SoundManager {
     const out = this.ensureBgmGain(ctx);
     if (!out) return;
     const t = ctx.currentTime + 0.05;
+    // 短 BGM 期间把环境音乐 duck 下去
+    this.duckAmbient(true);
+    const durations: Record<BgmName, number> = {
+      anticipation: 6.5,
+      decisive: 4.2,
+      fanfareWin: 5.2,
+      fanfareLose: 5.2,
+    };
+    window.setTimeout(() => this.duckAmbient(false), durations[name] * 1000);
     switch (name) {
       case 'anticipation':
         this.bgmAnticipation(ctx, out, t);
@@ -163,9 +282,79 @@ class SoundManager {
     }
   }
 
+  /**
+   * 播放一个外部音频文件作为一次性 SFX。按 URL 懒加载 + 缓存，
+   * 走 masterGain，遵守静音。可传入 volume（0~1，默认 0.7）。
+   */
+  playFileSfx(url: string, opts: { volume?: number } = {}): void {
+    if (this.muted) return;
+    const ctx = this.ensureCtx();
+    if (!ctx || !this.masterGain) return;
+    const volume = opts.volume ?? 0.7;
+    const cached = this.sfxBuffers.get(url);
+    if (cached) {
+      this.playSfxBuffer(ctx, cached, volume);
+      return;
+    }
+    void this.ensureSfxBuffer(ctx, url).then((buf) => {
+      if (!buf || this.muted) return;
+      this.playSfxBuffer(ctx, buf, volume);
+    });
+  }
+
+  /** 预加载一个文件 SFX（可选，避免首次播放时的解码抖动）。 */
+  preloadFileSfx(url: string): void {
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    void this.ensureSfxBuffer(ctx, url);
+  }
+
+  private ensureSfxBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer | null> {
+    const cached = this.sfxBuffers.get(url);
+    if (cached) return Promise.resolve(cached);
+    const existing = this.sfxLoading.get(url);
+    if (existing) return existing;
+    const p = fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`SFX fetch failed: ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then(
+        (bytes) =>
+          new Promise<AudioBuffer>((resolve, reject) => {
+            ctx.decodeAudioData(bytes, resolve, reject);
+          }),
+      )
+      .then((buf) => {
+        this.sfxBuffers.set(url, buf);
+        this.sfxLoading.delete(url);
+        return buf;
+      })
+      .catch((err) => {
+        console.warn('[sound] SFX load failed', url, err);
+        this.sfxLoading.delete(url);
+        return null;
+      });
+    this.sfxLoading.set(url, p);
+    return p;
+  }
+
+  private playSfxBuffer(ctx: AudioContext, buffer: AudioBuffer, volume: number): void {
+    if (!this.masterGain) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const g = ctx.createGain();
+    g.gain.value = volume;
+    src.connect(g).connect(this.masterGain);
+    src.start();
+  }
+
   /** 立刻淡出停止 BGM（约 120ms 渐隐）。SFX 不受影响。 */
   stopBgm(): void {
-    if (!this.ctx || !this.bgmGain) return;
+    if (!this.ctx || !this.bgmGain) {
+      this.duckAmbient(false);
+      return;
+    }
     const ctx = this.ctx;
     const node = this.bgmGain;
     this.bgmGain = null;
@@ -184,6 +373,131 @@ class SoundManager {
         /* already disconnected */
       }
     }, 200);
+    this.duckAmbient(false);
+  }
+
+  // ============================================================
+  //  环境 BGM（长循环音频文件）
+  // ============================================================
+
+  /**
+   * 启动循环环境音乐。首次调用会异步加载并解码 mp3。
+   * 必须在用户手势之后调用才能真正出声（浏览器自动播放策略）。
+   */
+  startAmbient(url: string): void {
+    this.ambientUrl = url;
+    this.ambientActive = true;
+    if (this.muted) return;
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    void this.ensureAmbientBuffer(ctx).then((buf) => {
+      if (!buf || !this.ambientActive || this.muted) return;
+      this.playAmbientNow();
+    });
+  }
+
+  /** 停止循环环境音乐（外部意图停止：清除意图 flag + 淡出 ~400ms）。 */
+  stopAmbient(): void {
+    this.ambientActive = false;
+    this.stopAmbientSource(0.4);
+  }
+
+  /**
+   * 内部用：只停止当前 ambient 源节点，不清除 `ambientActive` 意图 flag。
+   * 给 mute 用，方便 un-mute 时按意图重建源。
+   */
+  private stopAmbientSource(fadeSec = 0.12): void {
+    if (!this.ctx || !this.ambientGain || !this.ambientSource) return;
+    const ctx = this.ctx;
+    const gainNode = this.ambientGain;
+    const source = this.ambientSource;
+    this.ambientGain = null;
+    this.ambientSource = null;
+    const t = ctx.currentTime;
+    try {
+      gainNode.gain.cancelScheduledValues(t);
+      gainNode.gain.setValueAtTime(gainNode.gain.value, t);
+      gainNode.gain.linearRampToValueAtTime(0, t + fadeSec);
+    } catch {
+      /* ignore */
+    }
+    setTimeout(
+      () => {
+        try {
+          source.stop();
+        } catch {
+          /* already stopped */
+        }
+        try {
+          gainNode.disconnect();
+        } catch {
+          /* already disconnected */
+        }
+      },
+      Math.max(80, fadeSec * 1000 + 40),
+    );
+  }
+
+  private ensureAmbientBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.ambientBuffer) return Promise.resolve(this.ambientBuffer);
+    if (this.ambientLoading) return this.ambientLoading;
+    const url = this.ambientUrl;
+    if (!url) return Promise.resolve(null);
+    this.ambientLoading = fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`BGM fetch failed: ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then(
+        (bytes) =>
+          new Promise<AudioBuffer>((resolve, reject) => {
+            ctx.decodeAudioData(bytes, resolve, reject);
+          }),
+      )
+      .then((buf) => {
+        this.ambientBuffer = buf;
+        return buf;
+      })
+      .catch((err) => {
+        console.warn('[sound] ambient BGM load failed', err);
+        this.ambientLoading = null;
+        return null;
+      });
+    return this.ambientLoading;
+  }
+
+  private playAmbientNow(): void {
+    if (!this.ctx || !this.ambientBuffer || !this.masterGain) return;
+    // 已在播则跳过
+    if (this.ambientSource) return;
+    const ctx = this.ctx;
+    const src = ctx.createBufferSource();
+    src.buffer = this.ambientBuffer;
+    src.loop = true;
+    const gain = ctx.createGain();
+    const target = this.ambientDucked ? AMBIENT_DUCK_GAIN : AMBIENT_BASE_GAIN;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(target, ctx.currentTime + AMBIENT_FADE);
+    src.connect(gain).connect(this.masterGain);
+    src.start();
+    this.ambientSource = src;
+    this.ambientGain = gain;
+  }
+
+  private duckAmbient(duck: boolean): void {
+    this.ambientDucked = duck;
+    if (!this.ctx || !this.ambientGain) return;
+    const ctx = this.ctx;
+    const target = duck ? AMBIENT_DUCK_GAIN : AMBIENT_BASE_GAIN;
+    const g = this.ambientGain.gain;
+    const t = ctx.currentTime;
+    try {
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(g.value, t);
+      g.linearRampToValueAtTime(target, t + (duck ? 0.25 : 0.6));
+    } catch {
+      /* ignore */
+    }
   }
 
   // ---------- 内部 ----------
@@ -218,7 +532,9 @@ class SoundManager {
       this.masterGain.gain.value = this.muted ? 0 : 0.6;
       this.masterGain.connect(this.ctx.destination);
     }
-    if (this.ctx.state === 'suspended') {
+    // 静音态下不要尝试 resume —— 静音时我们显式 suspend 了 ctx，
+    // 避免静音期间被其它路径（预加载/订阅回调等）悄悄唤醒。
+    if (this.ctx.state === 'suspended' && !this.muted) {
       this.ctx.resume().catch(() => {
         /* user gesture not yet */
       });

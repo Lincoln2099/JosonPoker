@@ -29,3 +29,23 @@ export function playBgm(name: 'anticipation' | 'decisive' | 'fanfareWin' | 'fanf
 export function stopBgm() {
   sound.stopBgm();
 }
+
+/** 启动/切换循环环境 BGM（需已在用户手势上下文内调用才能真正出声）。 */
+export function startAmbient(url: string) {
+  sound.startAmbient(url);
+}
+
+/** 关闭循环环境 BGM。 */
+export function stopAmbient() {
+  sound.stopAmbient();
+}
+
+/** 播放外部音频文件作为一次性 SFX（按 URL 缓存）。 */
+export function playFileSfx(url: string, opts?: { volume?: number }) {
+  sound.playFileSfx(url, opts);
+}
+
+/** 预加载一个文件 SFX，避免首次播放时的解码抖动。 */
+export function preloadFileSfx(url: string) {
+  sound.preloadFileSfx(url);
+}
