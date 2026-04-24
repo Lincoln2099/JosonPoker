@@ -7,9 +7,7 @@ import ChickenCatchScreen from './components/screens/ChickenCatchScreen';
 import GameScreen from './components/screens/GameScreen';
 import GameOverScreen from './components/screens/GameOverScreen';
 import SoundToggle from './components/hud/SoundToggle';
-import { startAmbient } from './hooks/useSound';
-
-const AMBIENT_BGM_URL = '/assets/bgm/sunlight-through-blossoms.mp3';
+import { stopAmbient } from './hooks/useSound';
 
 export default function App() {
   const screen = useGameStore((s) => s.screen);
@@ -20,24 +18,12 @@ export default function App() {
     startLoading();
   }, [startLoading]);
 
-  // 加载页结束后启动环境背景音乐。立刻试一次（若 AudioContext 已解锁即可发声），
-  // 并挂一次性用户手势监听作为移动端自动播放策略的兜底。
+  // 兜底:确保循环环境 BGM 永远不会从历史 session 残留下来。
+  // （早期版本在 App 启动时会自动开循环 BGM,叠加各场景的短 BGM 让人头大,
+  //  所以现已默认不再开启,只留 SFX + 各场景按需的短 BGM。）
   useEffect(() => {
-    if (screen === 'loading') return;
-    const kick = () => startAmbient(AMBIENT_BGM_URL);
-    kick();
-    const events: Array<keyof DocumentEventMap> = ['pointerdown', 'keydown', 'touchstart'];
-    const once = () => {
-      kick();
-      events.forEach((e) => document.removeEventListener(e, once));
-    };
-    events.forEach((e) =>
-      document.addEventListener(e, once, { once: true, passive: true }),
-    );
-    return () => {
-      events.forEach((e) => document.removeEventListener(e, once));
-    };
-  }, [screen]);
+    stopAmbient();
+  }, []);
 
   return (
     <div className="min-h-dvh text-white">
