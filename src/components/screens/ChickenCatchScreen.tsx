@@ -4,7 +4,6 @@ import gsap from 'gsap';
 import { useGameStore } from '../../store/useGameStore';
 import {
   playSound,
-  playBgm,
   stopBgm,
   playFileSfx,
   preloadFileSfx,
@@ -301,12 +300,12 @@ function ChickenNumber({ number, scale }: { number: number; scale: number }) {
           width: plateW,
           height: plateH,
           borderRadius: radius,
-          // 干净的米白宣纸,微微的渐变让它有立体感
-          background:
-            'linear-gradient(180deg, #fdfaf0 0%, #f6efd9 100%)',
-          border: `${borderW}px solid #1a1108`,
+          // 半透明的米白纸感(对齐设计稿——能透出鸡羽毛的颜色,不是死白纸)
+          background: 'rgba(252, 248, 232, 0.55)',
+          border: `${borderW}px solid rgba(38, 24, 12, 0.85)`,
           boxShadow:
-            '0 2px 5px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.6) inset',
+            '0 2px 5px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.35) inset',
+          backdropFilter: 'blur(2px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -315,18 +314,18 @@ function ChickenNumber({ number, scale }: { number: number; scale: number }) {
       >
         <span
           style={{
+            // 用 Ma Shan Zheng (毛笔/碑刻风),呼应背景木牌"选择要抓的鸡"的字体
             fontFamily:
-              "'Noto Serif SC', 'STKaiti', 'KaiTi', 'PingFang SC', serif",
-            fontWeight: 900,
+              "'Ma Shan Zheng', 'STKaiti', 'KaiTi', 'Noto Serif SC', serif",
+            fontWeight: 700,
             fontSize,
-            color: '#0e0805',
+            color: '#1a0d04',
             lineHeight: 1,
             letterSpacing: 0,
             display: 'inline-block',
             whiteSpace: 'nowrap',
-            // 极轻微的笔锋阴影,模拟毛笔字的浓淡
             textShadow:
-              '0 0 0.6px rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.35)',
+              '0 0 0.6px rgba(0,0,0,0.55), 0 0.5px 0 rgba(0,0,0,0.3)',
             transform: 'translateY(-1px)',
           }}
         >
@@ -363,13 +362,11 @@ export default function ChickenCatchScreen() {
         { y: 0, opacity: 1, scale: 1, duration: 0.7, ease: 'back.out(1.6)' },
       );
     }
-    // 抓鸡屏入场 → 紧张 BGM（6s 一次性，组件卸载时立即停掉）
-    playBgm('anticipation');
-    // 玩家确定后要播的"鸡鸣"音效,提前解码避免首次播放卡顿
+    // 抓鸡屏不再播 BGM(BGM 进入正式游戏后再开始,避免选鸡时被吵)。
+    // 但仍需把"鸡鸣"音效提前解码,避免确认时首次播放卡顿。
     preloadFileSfx(CHICKEN_CROW_SFX);
-    return () => {
-      stopBgm();
-    };
+    // 进入抓鸡屏时,把上一局可能残留的短 BGM 立刻停掉
+    stopBgm();
   }, []);
 
   // 监听舞台真实宽度，计算鸡的缩放比例
@@ -436,35 +433,14 @@ export default function ChickenCatchScreen() {
     <div
       className="relative flex h-dvh flex-col overflow-hidden"
       style={{
-        // 背景底色 —— 与背景图樱花/草地色调呼应,
-        // 即使图片被竖屏 cover 裁切,边缘也能延续同色,不露白底。
-        backgroundColor: '#9fc37b',
+        // 整体底色 —— 顶部接背景图天空粉色,中段过渡,底部草地深绿,
+        // 让背景图和下方草地无缝衔接,不会再出现"一片黄色"。
+        background:
+          'linear-gradient(180deg, #dc89a6 0%, #cf9a8a 14%, #133008 22%, #1a3e10 50%, #15300d 100%)',
       }}
     >
-      {/* 背景图(已包含设计稿里的木牌"选择要抓的鸡"+樱花拱门+草地路径)
-          底部经 PIL 拉绿延展为接近正方形,任何屏幕都能完整显示标牌 + 草地 */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url(${BG_CATCH_SCENE})`,
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
-          // 顶部对齐:确保木牌"选择要抓的鸡"在任何视口尺寸下都完整显示在顶部
-          backgroundPosition: 'center top',
-        }}
-      />
-      {/* 极轻量氛围层:仅在最底部一点压暗,让操作按钮区有更好对比度,
-          其余地方完全保留背景画面本身的色彩 */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          background:
-            'linear-gradient(180deg, transparent 0%, transparent 70%, rgba(20,40,22,0.22) 90%, rgba(14,30,18,0.42) 100%)',
-        }}
-      />
-
-      {/* 顶栏 */}
-      <div className="relative z-10 flex items-center justify-between pl-5 pr-14 pt-5 sm:pr-5">
+      {/* 顶栏 —— 浮动在背景图上方,不挤占内容区 */}
+      <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between pl-3 pr-14 pt-3 sm:pr-3">
         <button
           onClick={() => {
             playSound('back');
@@ -472,12 +448,12 @@ export default function ChickenCatchScreen() {
           }}
           className="rounded-full px-3 py-1.5 text-[12px] font-bold tracking-wider"
           style={{
-            background: 'rgba(42,22,8,0.65)',
+            background: 'rgba(20,12,4,0.72)',
             border: '1px solid rgba(240,202,80,0.55)',
             color: '#ffd868',
             cursor: 'pointer',
-            backdropFilter: 'blur(6px)',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
           }}
         >
           ← 返回
@@ -485,35 +461,43 @@ export default function ChickenCatchScreen() {
         <div
           className="rounded-full px-3 py-1 text-[11px] font-bold tracking-wider"
           style={{
-            background: 'rgba(42,22,8,0.7)',
+            background: 'rgba(20,12,4,0.72)',
             color: '#ffd868',
             border: '1px solid rgba(240,202,80,0.55)',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(8px)',
           }}
         >
           {np} 人局
         </div>
       </div>
 
-      {/* 标题已经直接画进背景图（"选择要抓的鸡"金字木牌）,
-          这里只放一个不可见的 ref 锚点供入场动画使用 + 一条副标题提示 */}
-      <div className="relative z-10 flex flex-col items-center px-5">
-        <div ref={titleRef} aria-hidden style={{ height: 0, width: 0 }} />
-        <p
-          className="mt-2 text-center text-[11px] sm:mt-3 sm:text-[12px]"
-          style={{
-            color: '#fff7d8',
-            fontWeight: 700,
-            textShadow:
-              '0 1px 2px rgba(0,0,0,0.55), 0 0 8px rgba(70,30,8,0.6)',
-            letterSpacing: '0.05em',
-          }}
-        >
-          点击下方一只小鸡 · 中签者即为本局输家
-        </p>
-      </div>
+      {/* 入场动画的隐藏锚点 */}
+      <div ref={titleRef} aria-hidden style={{ height: 0, width: 0 }} />
 
-      {/* 舞台 —— 无独立背景，仅作为鸡群容器 */}
+      {/* 顶部留白 —— 让浮动顶栏按钮跟下方背景图里的木牌之间有清晰间距,
+          这段空白用页面渐变天空色,跟图片顶部颜色无缝接续 */}
+      <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-top, 0px) + 52px)' }} />
+
+      {/* 背景图作为顶部"自然 header":
+          - 始终按视口宽度铺满,不裁切两侧 → 木牌"选择要抓的鸡"完整可见
+          - 横屏/超宽屏下用 max-height 限制(56vh),避免一图占满整屏挤掉鸡 */}
+      <img
+        src={BG_CATCH_SCENE}
+        alt="樱花林木牌"
+        draggable={false}
+        className="block w-full select-none"
+        style={{
+          maxHeight: '56vh',
+          objectFit: 'cover',
+          objectPosition: 'center top',
+          flexShrink: 0,
+          marginBottom: -1,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 舞台 —— 鸡群直接站在草地渐变上,跟图底无缝衔接 */}
       <div className="relative z-10 mt-auto mb-4 flex flex-col items-center px-5 sm:mb-8">
         <div
           ref={stageRef}
