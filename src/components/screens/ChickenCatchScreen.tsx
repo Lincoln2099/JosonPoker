@@ -431,15 +431,44 @@ export default function ChickenCatchScreen() {
 
   return (
     <div
-      className="relative flex h-dvh flex-col overflow-hidden"
+      className="relative h-dvh overflow-hidden"
       style={{
-        // 整体底色 —— 顶部接背景图天空粉色,中段过渡,底部草地深绿,
-        // 让背景图和下方草地无缝衔接,不会再出现"一片黄色"。
-        background:
-          'linear-gradient(180deg, #dc89a6 0%, #cf9a8a 14%, #133008 22%, #1a3e10 50%, #15300d 100%)',
+        // 兜底色 —— 万一图没加载出来也是接近草绿的色,不会露白
+        backgroundColor: '#1f3e10',
       }}
     >
-      {/* 顶栏 —— 浮动在背景图上方,不挤占内容区 */}
+      {/* 1) 背景图 —— 用 object-fit: cover 铺满整个视口,
+            竖屏手机也能 100% 填满高度,不再有"中间一片纯色" */}
+      <img
+        src={BG_CATCH_SCENE}
+        alt="樱花林木牌"
+        draggable={false}
+        className="absolute inset-0 h-full w-full select-none"
+        style={{
+          objectFit: 'cover',
+          objectPosition: 'center top',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 2) 草地条 —— 贴视口底部,鸡正好站在雏菊+花瓣上 */}
+      <img
+        src={GRASS_STRIP}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="absolute inset-x-0 bottom-0 w-full select-none"
+        style={{
+          height: 'clamp(140px, 24vh, 220px)',
+          objectFit: 'cover',
+          objectPosition: 'center bottom',
+          zIndex: 1,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 3) 顶栏 —— 浮在背景图天空区上方 */}
       <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between pl-3 pr-14 pt-3 sm:pr-3">
         <button
           onClick={() => {
@@ -472,50 +501,14 @@ export default function ChickenCatchScreen() {
         </div>
       </div>
 
-      {/* 入场动画的隐藏锚点 */}
+      {/* 4) 入场动画的隐藏锚点 */}
       <div ref={titleRef} aria-hidden style={{ height: 0, width: 0 }} />
 
-      {/* 顶部留白 —— 让浮动顶栏按钮跟下方背景图里的木牌之间有清晰间距,
-          这段空白用页面渐变天空色,跟图片顶部颜色无缝接续 */}
-      <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-top, 0px) + 52px)' }} />
+      {/* 5) 主内容区 —— absolute 占满,内部用 flex 把鸡群+底部按钮挤到下方 */}
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-end pb-4 sm:pb-8">
 
-      {/* 背景图作为顶部"自然 header":
-          - 始终按视口宽度铺满,不裁切两侧 → 木牌"选择要抓的鸡"完整可见
-          - 横屏/超宽屏下用 max-height 限制(56vh),避免一图占满整屏挤掉鸡 */}
-      <img
-        src={BG_CATCH_SCENE}
-        alt="樱花林木牌"
-        draggable={false}
-        className="block w-full select-none"
-        style={{
-          maxHeight: '56vh',
-          objectFit: 'cover',
-          objectPosition: 'center top',
-          flexShrink: 0,
-          marginBottom: -1,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* 鸡群脚下的草地条 ——
-          从背景图底部裁出的"草地+雏菊+花瓣"条带,贴在视口最底部,
-          鸡群正好站在它上面,告别"一片纯绿色背景" */}
-      <img
-        src={GRASS_STRIP}
-        alt=""
-        aria-hidden
-        draggable={false}
-        className="absolute inset-x-0 bottom-0 w-full select-none pointer-events-none"
-        style={{
-          height: 'clamp(120px, 22vh, 200px)',
-          objectFit: 'cover',
-          objectPosition: 'center bottom',
-          zIndex: 1,
-        }}
-      />
-
-      {/* 舞台 —— 鸡群直接站在草地渐变上,跟图底无缝衔接 */}
-      <div className="relative z-10 mt-auto mb-4 flex flex-col items-center px-5 sm:mb-8">
+      {/* 舞台 —— 鸡群直接站在草地条上 */}
+      <div className="flex flex-col items-center px-5">
         <div
           ref={stageRef}
           className="relative w-full max-w-[720px] overflow-visible py-2"
@@ -555,7 +548,7 @@ export default function ChickenCatchScreen() {
       </div>
 
       {/* 底部操作 */}
-      <div className="relative z-10 flex flex-col items-center gap-2 px-6 pb-6 pt-4 sm:gap-3 sm:pb-10 sm:pt-6">
+      <div className="flex flex-col items-center gap-2 px-6 pb-2 pt-3 sm:gap-3 sm:pb-4 sm:pt-4">
         <AnimatePresence mode="wait">
           {selected === null ? (
             <motion.div
@@ -628,6 +621,8 @@ export default function ChickenCatchScreen() {
           )}
         </AnimatePresence>
       </div>
+
+      </div>{/* /主内容区 */}
 
       {/* 鸡鸣瞬间柔和的金色暖光过场 */}
       <AnimatePresence>
