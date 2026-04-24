@@ -40,8 +40,6 @@ export function collectPreloadList(): string[] {
     LOADING_LANDSCAPE,
     CHICKEN_POSE,
     BG_CATCH_SCENE,
-    HAND_OPEN,
-    HAND_FIST,
   ];
   for (let n = 2; n <= 8; n++) {
     list.push(getChickenSrc(n));

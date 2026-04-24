@@ -1,6 +1,6 @@
 import { aiPick } from './ai';
 import { AI_ROSTER, HUMAN_CHAR_IDX, MULTS, shuffleArray, type Card } from './Card';
-import { Deck } from './Deck';
+import { Deck, decksForPlayers } from './Deck';
 import { evalHand } from './evaluate';
 import { calcPayouts, type RoundResult } from './payout';
 
@@ -56,7 +56,8 @@ function clonePlayer(p: PlayerState): PlayerState {
 }
 
 export function createGame(np: number, ante: number, loserRank: number): GameState {
-  const deck = new Deck();
+  // 3 人局只用一副牌(54 张),4~8 人局用两副(108 张),保证抽够同时降低重复
+  const deck = new Deck(decksForPlayers(np));
   const comm = deck.draw(4);
   const aiPool = shuffleArray([...AI_ROSTER]);
   const players: PlayerState[] = [];
