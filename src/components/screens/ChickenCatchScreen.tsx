@@ -271,81 +271,63 @@ function ChickenFigure({
   );
 }
 
-/** 渲染设计图里那种「挂在胸前的白色方形纸牌 + 细黑边 + 黑色毛笔汉字」。
- *  顶部再加一根细绳挂带,增强"挂在身上"的感觉。所有鸡统一同一种样式。 */
+/** 渲染设计稿里那种「正方形白纸牌 + 粗黑毛笔字」,挂在小鸡胸前。
+ *  - 正方形白纸,字几乎填满牌子(对齐设计图视觉比重)
+ *  - 不再画挂绳(设计稿没有,挂绳反而让画面零碎)
+ *  - 粗黑笔锋字体 + 略微纸张质感 */
 function ChickenNumber({ number, scale }: { number: number; scale: number }) {
-  const safeScale = Math.max(0.55, scale);
-  const fontSize = Math.max(15, 30 * safeScale);
-  const plateSize = Math.max(30, fontSize * 1.35);
-  const padX = Math.max(5, 7 * safeScale);
-  const padY = Math.max(3, 4 * safeScale);
+  const safeScale = Math.max(0.6, scale);
+  // 字号放大一档,牌子也跟着变大,跟设计稿的视觉比重一致
+  const fontSize = Math.max(20, 40 * safeScale);
+  // 正方形:边长 ≈ 字号 × 1.18,字几乎顶满牌面
+  const plateW = Math.round(fontSize * 1.18);
+  const plateH = Math.round(fontSize * 1.18);
   const radius = Math.max(2, 3 * safeScale);
+  const borderW = Math.max(1.4, 2 * safeScale);
   const posY = NUMBER_POS_Y[number] ?? 0.60;
-  const ropeWidth = Math.max(1, 1.3 * safeScale);
-  const ropeHeight = Math.max(8, 14 * safeScale);
 
   return (
     <div
-      className="pointer-events-none absolute left-1/2"
+      className="pointer-events-none absolute"
       style={{
+        left: '50%',
         top: `${posY * 100}%`,
         transform: 'translate(-50%, -50%)',
         zIndex: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
       }}
     >
-      {/* 挂绳 —— 细黑线从牌子顶部往上斜两条,像 A 字形吊着 */}
-      <svg
-        width={ropeHeight * 1.3}
-        height={ropeHeight}
-        viewBox="0 0 13 10"
-        style={{ marginBottom: -1, overflow: 'visible' }}
-      >
-        <line
-          x1="6.5" y1="0" x2="2" y2="10"
-          stroke="#2a1a10"
-          strokeWidth={ropeWidth}
-          strokeLinecap="round"
-          opacity="0.75"
-        />
-        <line
-          x1="6.5" y1="0" x2="11" y2="10"
-          stroke="#2a1a10"
-          strokeWidth={ropeWidth}
-          strokeLinecap="round"
-          opacity="0.75"
-        />
-      </svg>
       <div
         style={{
-          padding: `${padY}px ${padX}px`,
-          minWidth: plateSize,
-          minHeight: plateSize,
+          width: plateW,
+          height: plateH,
           borderRadius: radius,
-          // 仿宣纸:淡米白略带纹理渐变
+          // 干净的米白宣纸,微微的渐变让它有立体感
           background:
-            'linear-gradient(180deg, #fbf5e2 0%, #f2e9cf 55%, #eaddb4 100%)',
-          border: `${Math.max(1, 1.3 * safeScale)}px solid #2a1a10`,
+            'linear-gradient(180deg, #fdfaf0 0%, #f6efd9 100%)',
+          border: `${borderW}px solid #1a1108`,
           boxShadow:
-            '0 2px 4px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.55) inset, 0 -1px 0 rgba(160,130,70,0.25) inset',
-          display: 'inline-flex',
+            '0 2px 5px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.6) inset',
+          display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
         }}
       >
         <span
           style={{
-            fontFamily: "'Noto Serif SC', 'STKaiti', 'KaiTi', 'PingFang SC', serif",
+            fontFamily:
+              "'Noto Serif SC', 'STKaiti', 'KaiTi', 'PingFang SC', serif",
             fontWeight: 900,
             fontSize,
-            color: '#1a0d04',
+            color: '#0e0805',
             lineHeight: 1,
             letterSpacing: 0,
             display: 'inline-block',
             whiteSpace: 'nowrap',
-            textShadow: '0 0 1px rgba(0,0,0,0.25)',
+            // 极轻微的笔锋阴影,模拟毛笔字的浓淡
+            textShadow:
+              '0 0 0.6px rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.35)',
+            transform: 'translateY(-1px)',
           }}
         >
           {CN_NUM[number]}
@@ -459,14 +441,16 @@ export default function ChickenCatchScreen() {
         backgroundColor: '#9fc37b',
       }}
     >
-      {/* 背景图(已包含设计稿里的木牌"选择要抓的鸡"+樱花拱门+草地路径) */}
+      {/* 背景图(已包含设计稿里的木牌"选择要抓的鸡"+樱花拱门+草地路径)
+          底部经 PIL 拉绿延展为接近正方形,任何屏幕都能完整显示标牌 + 草地 */}
       <div
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           backgroundImage: `url(${BG_CATCH_SCENE})`,
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'cover',
-          backgroundPosition: 'center center',
+          // 顶部对齐:确保木牌"选择要抓的鸡"在任何视口尺寸下都完整显示在顶部
+          backgroundPosition: 'center top',
         }}
       />
       {/* 极轻量氛围层:仅在最底部一点压暗,让操作按钮区有更好对比度,
