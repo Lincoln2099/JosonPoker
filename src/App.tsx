@@ -7,7 +7,10 @@ import ChickenCatchScreen from './components/screens/ChickenCatchScreen';
 import GameScreen from './components/screens/GameScreen';
 import GameOverScreen from './components/screens/GameOverScreen';
 import SoundToggle from './components/hud/SoundToggle';
-import { stopAmbient, stopBgm } from './hooks/useSound';
+import { startAmbient, stopBgm } from './hooks/useSound';
+
+/** 全程循环播放的环境 BGM —— 从加载页一直放到回菜单,只有静音按钮能停 */
+const APP_AMBIENT_BGM = '/assets/bgm/sunlight-through-blossoms.mp3';
 
 export default function App() {
   const screen = useGameStore((s) => s.screen);
@@ -18,14 +21,30 @@ export default function App() {
     startLoading();
   }, [startLoading]);
 
-  // 强制兜底:页面挂载时立刻把所有可能残留的音频源停掉(短 BGM + 循环环境 BGM)。
-  // 应对场景:
-  //   1) 旧版本在 App 启动时会自动开循环 BGM,叠加场景短 BGM 让人头大
-  //   2) HMR / 多标签 / 后台标签 等情况下 AudioContext 残留还在播
-  // （SoundManager 构造时已经挂了 visibilitychange 钩子,tab 切到后台会自动 suspend）
+  // 兜底清掉上一局可能残留的短 BGM(各场景的 splash / fanfare 等),
+  // 然后把全程循环的环境 BGM 标记为"激活":
+  //   - 第一次调 startAmbient 会同时尝试"立刻开播"
+  //   - 如果浏览器 autoplay 还没解锁(没有用户手势),就只是预加载 mp3,
+  //     等用户首次点击/触摸/按键时再真正出声(下面的 once 监听器负责)
   useEffect(() => {
-    stopAmbient();
     stopBgm();
+    startAmbient(APP_AMBIENT_BGM);
+    const kick = () => startAmbient(APP_AMBIENT_BGM);
+    const events: Array<keyof DocumentEventMap> = [
+      'pointerdown',
+      'keydown',
+      'touchstart',
+    ];
+    const once = () => {
+      kick();
+      events.forEach((e) => document.removeEventListener(e, once));
+    };
+    events.forEach((e) =>
+      document.addEventListener(e, once, { once: true, passive: true }),
+    );
+    return () => {
+      events.forEach((e) => document.removeEventListener(e, once));
+    };
   }, []);
 
   return (

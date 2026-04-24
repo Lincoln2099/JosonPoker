@@ -20,6 +20,8 @@ export const LOADING_LANDSCAPE = '/assets/loading-landscape.png';
 export const CHICKEN_POSE = '/assets/chicken-pose.png';
 /** 抓鸡场景背景：樱花林金色晨光 */
 export const BG_CATCH_SCENE = '/assets/bg-catch-scene.png';
+/** 从背景图底部裁出的草地+雏菊+花瓣条带,贴在抓鸡屏鸡群脚下 */
+export const GRASS_STRIP = '/assets/grass-strip.png';
 
 /** 抓鸡场景：编号 2~8 各自一张独特的 3D Pixar 风格鸡 PNG */
 export function getChickenSrc(num: number): string {
@@ -40,6 +42,7 @@ export function collectPreloadList(): string[] {
     LOADING_LANDSCAPE,
     CHICKEN_POSE,
     BG_CATCH_SCENE,
+    GRASS_STRIP,
   ];
   for (let n = 2; n <= 8; n++) {
     list.push(getChickenSrc(n));

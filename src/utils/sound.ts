@@ -154,11 +154,13 @@ class SoundManager {
       /* storage unavailable */
     }
     if (value) {
-      // 静音 —— 三重保险确保所有声音(SFX + 短 BGM + 循环环境 BGM)立刻停掉:
-      //   1) gain → 0（消除参数自动化的 in-progress 渐变）
-      //   2) disconnect 主 gain 与 destination（物理切断信号路径,瞬间静音）
-      //   3) 立即停掉所有正在播的源（短 BGM + 环境 BGM,不做淡出）
-      //   4) suspend AudioContext 节能
+      // 静音 —— 关键:不能 stop() 环境 BGM 的 source,否则 unmute 时只能从 0
+      // 重新创建,听起来就是"从头播放"。正确做法:
+      //   1) masterGain.gain → 0 + disconnect destination(瞬间物理静音)
+      //   2) 短 BGM(playBgm 一次性的)可以 hardStop,反正它本来就是短曲
+      //   3) 环境 BGM 的 source 保持活着,只是 ctx.suspend() 把音频时钟整个冻住,
+      //      它的内部播放位置就停在那一帧不动
+      //   4) ctx.suspend() 让一切处理停摆,既省电又保留状态
       if (this.ctx && this.masterGain) {
         try {
           this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
@@ -172,18 +174,16 @@ class SoundManager {
           /* already disconnected */
         }
       }
-      // 短 BGM(playBgm)立刻断开 + source 停
       this.hardStopBgm();
-      // 环境 BGM(startAmbient)立刻断开 + source 停（保留 ambientActive 意图,unmute 时会自动恢复）
-      this.hardStopAmbient();
+      // ⚠️ 不调 hardStopAmbient —— 保留 ambientSource 让它跟随 ctx 一起冻结/恢复
       if (this.ctx && this.ctx.state === 'running') {
         this.ctx.suspend().catch(() => {
           /* ignore */
         });
       }
     } else {
-      // 取消静音：先 resume ctx,再把 masterGain 重新接回 destination,gain 恢复,
-      // 若环境 BGM 之前是激活状态就重启
+      // 取消静音 —— ctx.resume() 之后,环境 BGM source 的播放位置会从冻结点
+      // 自然继续往下走(感觉像 pause/resume),不再是从头播放。
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume().catch(() => {
           /* ignore */
@@ -202,7 +202,9 @@ class SoundManager {
           /* already connected */
         }
       }
-      if (this.ambientActive && this.ambientBuffer) {
+      // 兜底:如果之前是 ambientActive 但 source 已经被 hardStopAmbient
+      // 显式停掉过(比如组件卸载流程),那就重新拉起——这种情况只有从 0 开始可选
+      if (this.ambientActive && this.ambientBuffer && !this.ambientSource) {
         this.playAmbientNow();
       }
     }

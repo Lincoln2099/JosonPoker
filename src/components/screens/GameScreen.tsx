@@ -19,10 +19,7 @@ import FlipReveal from '../fx/FlipReveal';
 import StadiumBg from '../fx/StadiumBg';
 import GameHints from '../hud/GameHints';
 import RoundResultModal from '../fx/RoundResultModal';
-import { playSound, playBgm, startAmbient, stopAmbient } from '../../hooks/useSound';
-
-/** 进入游戏后循环播放的环境 BGM */
-const GAME_AMBIENT_BGM = '/assets/bgm/sunlight-through-blossoms.mp3';
+import { playSound, playBgm } from '../../hooks/useSound';
 
 function RoundSplash({ round }: { round: number }) {
   const color = STEP_COLORS[round] ?? '#f0ca50';
@@ -256,16 +253,6 @@ export default function GameScreen() {
     return () => clearTimeout(timer);
   }, [phase, autoAdvanceFromSplash]);
 
-  // 进入游戏屏 → 启动循环环境 BGM(sunlight-through-blossoms.mp3),
-  // 卸载游戏屏(回菜单 / 进入结算)时停掉。
-  // 短 BGM(splash / decisive / fanfare)播放期间 ambient 会自动 duck 到很轻,
-  // 不会"几路一起响"。
-  useEffect(() => {
-    startAmbient(GAME_AMBIENT_BGM);
-    return () => {
-      stopAmbient();
-    };
-  }, []);
 
   const handleFlipRevealComplete = useCallback(() => {
     // 第四轮确认出牌后触发 FlipReveal，翻完暗牌继续结算。

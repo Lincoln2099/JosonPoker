@@ -8,7 +8,7 @@ import {
   playFileSfx,
   preloadFileSfx,
 } from '../../hooks/useSound';
-import { getChickenSrc, BG_CATCH_SCENE } from '../../assets/images';
+import { getChickenSrc, BG_CATCH_SCENE, GRASS_STRIP } from '../../assets/images';
 
 /** 玩家确定后播放的"鸡鸣"音效(用户提供的 mp3 文件)。 */
 const CHICKEN_CROW_SFX = '/assets/sfx/chicken-caught.mp3';
@@ -494,6 +494,23 @@ export default function ChickenCatchScreen() {
           flexShrink: 0,
           marginBottom: -1,
           pointerEvents: 'none',
+        }}
+      />
+
+      {/* 鸡群脚下的草地条 ——
+          从背景图底部裁出的"草地+雏菊+花瓣"条带,贴在视口最底部,
+          鸡群正好站在它上面,告别"一片纯绿色背景" */}
+      <img
+        src={GRASS_STRIP}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="absolute inset-x-0 bottom-0 w-full select-none pointer-events-none"
+        style={{
+          height: 'clamp(120px, 22vh, 200px)',
+          objectFit: 'cover',
+          objectPosition: 'center bottom',
+          zIndex: 1,
         }}
       />
 
